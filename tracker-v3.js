@@ -1814,7 +1814,7 @@ let habitDetailId = null,
 function populateHabitEditor(item, type) {
   if (type !== "habit") return;
   const p = hp(item || {});
-  $("#habit-template-row").classList.toggle("hidden", !!item);
+  $("#habit-template").closest("label").classList.toggle("hidden", !!item);
   $("#habit-template").value = "";
   for (const k of [
     "type",
