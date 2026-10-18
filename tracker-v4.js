@@ -1,0 +1,2707 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  setPersistence,
+  browserLocalPersistence,
+} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDocFromServer,
+  onSnapshot,
+  runTransaction,
+  serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+const app = initializeApp({
+  apiKey: "AIzaSyBPXDB94o1_AF5ynTGx6Ue74KjaMn2LG6s",
+  authDomain: "folio-book-tracker.firebaseapp.com",
+  projectId: "folio-book-tracker",
+  storageBucket: "folio-book-tracker.firebasestorage.app",
+  messagingSenderId: "394823298585",
+  appId: "1:394823298585:web:f5e3e11d4c09a5fa9c4488",
+});
+const auth = getAuth(app),
+  db = getFirestore(app),
+  provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
+const $ = (s) => document.querySelector(s),
+  $$ = (s) => [...document.querySelectorAll(s)];
+const paths = {
+  spark: "M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z",
+  today: "M3 10.5 12 3l9 7.5M5 9v12h14V9M9 21v-7h6v7",
+  habits:
+    "M8 3H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3M8 12l3 3 5-6",
+  tasks: "M9 5h11M9 12h11M9 19h11M3 5l1 1 2-2M3 12l1 1 2-2M3 19l1 1 2-2",
+  journey:
+    "M8 3h8v5a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4M12 12v6m-4 3h8m-7-3h6",
+  focus: "M9 2h6M12 8v5l3 2M17 5l2-2M21 13a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
+  settings:
+    "M9.5 3h5l.7 3 2.6 1.5 2.9-.9 2.5 4.3-2.2 2.1v3l2.2 2.1-2.5 4.3-2.9-.9-2.6 1.5M9.5 3l-.7 3L6.2 7.5l-2.9-.9L.8 10.9 3 13v3M8 12a4 4 0 1 0 8 0 4 4 0 0 0-8 0",
+  check: "M5 12l4 4L19 6",
+  close: "m6 6 12 12M18 6 6 18",
+  plus: "M12 5v14M5 12h14",
+  search: "M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0",
+  bolt: "m13 2-9 12h7l-1 8 10-12h-7l1-8Z",
+  flame: "M12 3c0 5-6 5-6 11a6 6 0 0 0 12 0c0-3-2-6-3-7 0 4-3 4-3 4s2-5 0-8Z",
+  coin: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM14 8h-3a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4h-3m2-10v12",
+  arrow: "M5 12h14m-5-5 5 5-5 5",
+  left: "m14 6-6 6 6 6",
+  right: "m10 6 6 6-6 6",
+  book: "M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1m0-15c3-2 6-2 9-1v15c-3-1-6-1-9 1V5Z",
+  body: "M3 12h4l3-8 4 16 3-8h4",
+  mind: "M9 18v3h6v-3M8 14a6 6 0 1 1 8 0c-1 1-1 2-1 3H9c0-1 0-2-1-3Z",
+  life: "M3 10 12 3l9 7M5 9v12h14V9m-10 3h6",
+  craft: "m4 7 8-4 8 4v12H4V7Zm4 0v3h8V7M9 3v4m6-4v4",
+  calendar: "M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Zm2-2v4m10-4v4M3 10h18",
+  shield: "m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Zm-4 9 3 3 5-6",
+  lock: "M5 10h14v11H5V10Zm3 0V6a4 4 0 1 1 8 0v4m-4 4v3",
+  download: "M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5",
+  upload: "M12 16V4m-5 5 5-5 5 5M4 17v4h16v-4",
+  play: "m8 4 12 8-12 8V4Z",
+  pause: "M7 4v16M17 4v16",
+  reset: "M4 9a8 8 0 1 1 0 6M4 4v5h5",
+  gift: "M3 8h18v5H3V8Zm2 5v8h14v-8M12 8v13M12 8H8a3 3 0 1 1 3-3l1 3Zm0 0h4a3 3 0 1 0-3-3l-1 3Z",
+  archive: "M3 3h18v5H3V3Zm2 5v13h14V8m-10 4h6",
+  logout: "M9 4H4v16h5m4-12 4 4-4 4M8 12h13",
+  edit: "m15 4 5 5M4 20l5-1L21 7l-5-5L4 14v6Z",
+  info: "M12 8h.01M12 11v6M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z",
+  star: "m12 3 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6Z",
+};
+// A compact settings icon uses an ordinary cog-like outline, with no asset dependency.
+paths.settings =
+  "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1 1-3Z";
+const icon = (n, cls = "") =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true" class="${cls}"><path d="${paths[n] || paths.spark}"/></svg>`;
+function paintIcons(root = document) {
+  root.querySelectorAll("[data-icon]").forEach((e) => {
+    e.innerHTML = icon(e.dataset.icon);
+    e.removeAttribute("data-icon");
+  });
+}
+paintIcons();
+const esc = (v) =>
+  String(v ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+const areas = {
+    mind: "Mind & learning",
+    body: "Body & health",
+    craft: "Work & craft",
+    life: "Life & home",
+  },
+  routes = {
+    today: "Today",
+    habits: "Habits",
+    tasks: "Tasks",
+    focus: "Focus",
+    journey: "Journey",
+    settings: "Settings",
+  },
+  XP = { easy: 10, normal: 20, hard: 40 };
+let s = null,
+  route = Object.hasOwn(routes, location.hash.slice(1))
+    ? location.hash.slice(1)
+    : "today",
+  selectedDate = "",
+  taskFilter = "open",
+  taskView = window.matchMedia("(max-width:760px)").matches ? "list" : "board",
+  taskSearch = "",
+  taskArea = "all",
+  showArchived = false,
+  editType = "task",
+  editId = null,
+  detailId = null,
+  profileName = "You",
+  activeUID = null;
+let ref = null,
+  unsub = null,
+  ready = false,
+  revision = 0,
+  busy = false,
+  pending = null,
+  pendingBase = 0,
+  deferred = null,
+  conflict = false,
+  epoch = 0;
+const KEY = "folio-quest-v2",
+  DRAFT = "folio-quest-pending-v2",
+  TIMER = "folio-focus-v2";
+let timer = null;
+try {
+  timer = JSON.parse(localStorage.getItem(TIMER) || "null");
+  if (
+    timer &&
+    (!Number.isFinite(timer.remainingMs) ||
+      !Number.isFinite(timer.plannedMinutes) ||
+      !timer.id ||
+      !Number.isFinite(timer.activeMs))
+  )
+    timer = null;
+} catch {}
+const clone = (x) => structuredClone(x),
+  id = () => crypto.randomUUID();
+// CORE START — deterministic progression and calendar calculations.
+function today() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: s?.settings?.timeZone || "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  return ["year", "month", "day"]
+    .map((k) => parts.find((p) => p.type === k).value)
+    .join("-");
+}
+function addDays(d, n) {
+  const v = new Date(d + "T12:00:00Z");
+  v.setUTCDate(v.getUTCDate() + n);
+  return v.toISOString().slice(0, 10);
+}
+function weekday(d) {
+  return new Date(d + "T12:00:00Z").getUTCDay();
+}
+function dateLabel(d, opts = { month: "short", day: "numeric" }) {
+  return new Intl.DateTimeFormat("en-US", { ...opts, timeZone: "UTC" }).format(
+    new Date(d + "T12:00:00Z"),
+  );
+}
+function schedule(h, d) {
+  const change = [...h.scheduleChanges]
+    .filter((c) => c.from <= d)
+    .sort((a, b) => a.from.localeCompare(b.from))
+    .at(-1);
+  return change?.days || h.scheduleChanges[0].days;
+}
+function habitDue(h, d) {
+  const p = hp(h);
+  return (
+    !h.archived &&
+    h.createdOn <= d &&
+    !isHabitPaused(h, d) &&
+    (p.frequency === "weekly" || schedule(h, d).includes(weekday(d)))
+  );
+}
+function hlog(h, d) {
+  return s.habitLogs.find((l) => l.habitId === h.id && l.date === d);
+}
+function habitDone(h, d) {
+  const l = hlog(h, d);
+  return !!l && l.value >= l.target;
+}
+function habitStreak(h, d = today()) {
+  if (hp(h).frequency === "weekly") return weeklyStreak(h, d);
+  let count = 0,
+    v = d;
+  if (!habitDone(h, v)) v = addDays(v, -1);
+  for (let n = 0; n < 3660 && v >= h.createdOn; n++, v = addDays(v, -1)) {
+    if (
+      !schedule(h, v).includes(weekday(v)) ||
+      ["skip", "rest"].includes(hlog(h, v)?.detail?.status) ||
+      isHabitPaused(h, v)
+    )
+      continue;
+    if (habitDone(h, v)) count++;
+    else break;
+  }
+  return count;
+}
+function taskDue(t, d = today()) {
+  return (
+    !t.archived &&
+    (t.repeat === "none" ||
+      (t.dueDate <= d &&
+        (t.repeat === "daily" || weekday(t.dueDate) === weekday(d))))
+  );
+}
+function taskKey(t, d = today()) {
+  return t.id + "|" + (t.repeat === "none" ? "once" : d);
+}
+function tlog(t, d = today()) {
+  return s.taskLogs.find((l) => l.key === taskKey(t, d));
+}
+function taskDone(t, d = today()) {
+  return !!tlog(t, d)?.done;
+}
+function activeDays() {
+  return new Set([
+    ...s.habitLogs.filter((l) => l.value >= l.target).map((l) => l.date),
+    ...s.taskLogs.filter((l) => l.done).map((l) => l.doneOn),
+    ...s.focusSessions.map((f) => f.date),
+  ]);
+}
+function overallStreak() {
+  let ds = activeDays(),
+    v = today(),
+    n = 0;
+  if (!ds.has(v)) v = addDays(v, -1);
+  while (ds.has(v) && n < 3660) {
+    n++;
+    v = addDays(v, -1);
+  }
+  return n;
+}
+function questInfo(d) {
+  const h = s.habitLogs.filter(
+      (l) => l.date === d && l.value >= l.target,
+    ).length,
+    t = s.taskLogs.filter((l) => l.done && l.doneOn === d).length,
+    f = s.focusSessions.filter((f) => f.date === d).length;
+  return [
+    {
+      id: "habits",
+      name: "Show up for yourself",
+      description: `Complete 3 habits · ${Math.min(h, 3)}/3`,
+      done: h >= 3,
+      xp: 20,
+      icon: "habits",
+    },
+    {
+      id: "task",
+      name: "Move one thing forward",
+      description: `Complete a task · ${Math.min(t, 1)}/1`,
+      done: t >= 1,
+      xp: 15,
+      icon: "tasks",
+    },
+    {
+      id: "focus",
+      name: "Make a little space",
+      description: `Finish a focus session · ${Math.min(f, 1)}/1`,
+      done: f >= 1,
+      xp: 15,
+      icon: "focus",
+    },
+  ];
+}
+function game() {
+  const hc = s.habitLogs.filter((l) => l.value >= l.target),
+    tc = s.taskLogs.filter((l) => l.done),
+    sessions = [...s.focusSessions].sort((a, b) =>
+      a.completedAt.localeCompare(b.completedAt),
+    );
+  let xp = hc.reduce((n, l) => n + l.xp, 0) + tc.reduce((n, l) => n + l.xp, 0),
+    focusCounts = {};
+  for (const f of sessions) {
+    focusCounts[f.date] = (focusCounts[f.date] || 0) + 1;
+    if (focusCounts[f.date] <= 4) xp += 20;
+  }
+  for (const d of activeDays())
+    xp += questInfo(d)
+      .filter((q) => q.done)
+      .reduce((n, q) => n + q.xp, 0);
+  let level = 1;
+  while (50 * level * (level + 1) <= xp) level++;
+  const base = 50 * (level - 1) * level,
+    next = 50 * level * (level + 1),
+    spent = s.redemptions.reduce((n, r) => n + r.cost, 0);
+  return {
+    xp,
+    level,
+    base,
+    next,
+    within: xp - base,
+    needed: next - base,
+    coins: Math.floor(xp / 10) - spent,
+    hc: hc.length,
+    tc: tc.length,
+    focus: sessions.length,
+    minutes: sessions.reduce((n, f) => n + f.minutes, 0),
+    title:
+      level >= 10
+        ? "Architect"
+        : level >= 5
+          ? "Pathfinder"
+          : level >= 2
+            ? "Builder"
+            : "New explorer",
+  };
+}
+// CORE END
+function seed() {
+  const d = today(),
+    all = [0, 1, 2, 3, 4, 5, 6];
+  return {
+    settings: {
+      name: "",
+      timeZone: "America/Sao_Paulo",
+      theme: "system",
+      dailyGoal: 100,
+    },
+    habits: [
+      {
+        id: id(),
+        title: "Read for 10 minutes",
+        notes: "A chapter, a few pages, or a little curiosity.",
+        area: "mind",
+        effort: "normal",
+        target: 1,
+        unit: "session",
+        createdOn: d,
+        scheduleChanges: [{ from: d, days: all }],
+        archived: false,
+      },
+      {
+        id: id(),
+        title: "Move your body",
+        notes: "A walk, a run, or a home workout. Keep it kind.",
+        area: "body",
+        effort: "normal",
+        target: 1,
+        unit: "session",
+        createdOn: d,
+        scheduleChanges: [{ from: d, days: all }],
+        archived: false,
+      },
+      {
+        id: id(),
+        title: "Practice a little Russian",
+        notes: "Ten focused minutes is enough to begin.",
+        area: "mind",
+        effort: "easy",
+        target: 1,
+        unit: "session",
+        createdOn: d,
+        scheduleChanges: [{ from: d, days: all }],
+        archived: false,
+      },
+    ],
+    tasks: [],
+    habitLogs: [],
+    taskLogs: [],
+    focusSessions: [],
+    rewards: [
+      {
+        id: id(),
+        title: "An episode of a favorite show",
+        cost: 20,
+        archived: false,
+      },
+      {
+        id: id(),
+        title: "A slow, screen-free reading break",
+        cost: 10,
+        archived: false,
+      },
+    ],
+    redemptions: [],
+  };
+}
+function valid(v) {
+  const str = (x, n) => typeof x === "string" && x.length <= n,
+    dt = (x) =>
+      typeof x === "string" &&
+      /^\d{4}-\d{2}-\d{2}$/.test(x) &&
+      !Number.isNaN(Date.parse(x + "T12:00:00Z")) &&
+      new Date(x + "T12:00:00Z").toISOString().slice(0, 10) === x,
+    ids = (a) => new Set(a.map((x) => x.id || x.key)).size === a.length,
+    int = (n, min, max) => Number.isInteger(n) && n >= min && n <= max,
+    area = (a) => Object.hasOwn(areas, a),
+    effort = (a) => Object.hasOwn(XP, a);
+  if (
+    !v ||
+    !v.settings ||
+    !int(v.settings.dailyGoal, 10, 1000) ||
+    !str(v.settings.name, 40) ||
+    !["system", "light", "dark"].includes(v.settings.theme)
+  )
+    return false;
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: v.settings.timeZone }).format();
+  } catch {
+    return false;
+  }
+  for (const [k, max] of Object.entries({
+    habits: 100,
+    tasks: 800,
+    habitLogs: 6000,
+    taskLogs: 4000,
+    focusSessions: 2000,
+    rewards: 100,
+    redemptions: 1000,
+  }))
+    if (!Array.isArray(v[k]) || v[k].length > max || !ids(v[k])) return false;
+  return (
+    v.habits.every(
+      (h) =>
+        str(h.id, 80) &&
+        str(h.title, 140) &&
+        h.title.trim() &&
+        str(h.notes, 1200) &&
+        area(h.area) &&
+        effort(h.effort) &&
+        int(h.target, 1, 100000) &&
+        validProfile(h.profile) &&
+        str(h.unit, 18) &&
+        dt(h.createdOn) &&
+        typeof h.archived === "boolean" &&
+        Array.isArray(h.scheduleChanges) &&
+        h.scheduleChanges.length > 0 &&
+        h.scheduleChanges.length <= 100 &&
+        h.scheduleChanges.every(
+          (c) =>
+            dt(c.from) &&
+            Array.isArray(c.days) &&
+            c.days.length > 0 &&
+            c.days.every((d) => int(d, 0, 6)),
+        ),
+    ) &&
+    v.tasks.every(
+      (t) =>
+        str(t.id, 80) &&
+        str(t.title, 140) &&
+        t.title.trim() &&
+        str(t.notes, 1200) &&
+        area(t.area) &&
+        effort(t.effort) &&
+        ["high", "normal", "low"].includes(t.priority) &&
+        ["none", "daily", "weekly"].includes(t.repeat) &&
+        ["todo", "doing"].includes(t.status) &&
+        (t.dueDate === "" || dt(t.dueDate)) &&
+        (t.repeat === "none" || !!t.dueDate) &&
+        dt(t.createdOn) &&
+        typeof t.archived === "boolean" &&
+        Array.isArray(t.subtasks) &&
+        t.subtasks.length <= 8 &&
+        t.subtasks.every((q) => str(q.id, 80) && str(q.title, 100)),
+    ) &&
+    v.habitLogs.every(
+      (l) =>
+        str(l.id, 170) &&
+        str(l.habitId, 80) &&
+        dt(l.date) &&
+        l.id === l.habitId + "|" + l.date &&
+        int(l.value, 0, 100000) &&
+        validHabitDetail(l.detail) &&
+        int(l.target, 1, 100000) &&
+        [10, 20, 40].includes(l.xp) &&
+        area(l.area),
+    ) &&
+    v.taskLogs.every(
+      (l) =>
+        str(l.key, 170) &&
+        str(l.taskId, 80) &&
+        dt(l.date) &&
+        (l.key === l.taskId + "|once" || l.key === l.taskId + "|" + l.date) &&
+        typeof l.done === "boolean" &&
+        (!l.done || dt(l.doneOn)) &&
+        [10, 20, 40].includes(l.xp) &&
+        area(l.area) &&
+        Array.isArray(l.steps) &&
+        l.steps.every((q) => str(q, 80)),
+    ) &&
+    v.focusSessions.every(
+      (f) =>
+        str(f.id, 80) &&
+        dt(f.date) &&
+        int(f.minutes, 5, 90) &&
+        str(f.completedAt, 40) &&
+        str(f.taskTitle || "", 140),
+    ) &&
+    v.rewards.every(
+      (r) =>
+        str(r.id, 80) &&
+        str(r.title, 100) &&
+        r.title.trim() &&
+        int(r.cost, 1, 100000) &&
+        typeof r.archived === "boolean",
+    ) &&
+    v.redemptions.every(
+      (r) =>
+        str(r.id, 80) &&
+        str(r.title, 100) &&
+        int(r.cost, 1, 100000) &&
+        dt(r.date),
+    )
+  );
+}
+const stateKeys = [
+  "settings",
+  "habits",
+  "tasks",
+  "habitLogs",
+  "taskLogs",
+  "focusSessions",
+  "rewards",
+  "redemptions",
+];
+function pure(data) {
+  return Object.fromEntries(stateKeys.map((k) => [k, clone(data[k])]));
+}
+function applyTheme() {
+  const val = s?.settings.theme || "system";
+  document.documentElement.dataset.theme =
+    val === "system"
+      ? matchMedia("(prefers-color-scheme:dark)").matches
+        ? "dark"
+        : "light"
+      : val;
+}
+matchMedia("(prefers-color-scheme:dark)").addEventListener(
+  "change",
+  applyTheme,
+);
+function toast(text) {
+  $("#toast").textContent = text;
+  $("#toast").classList.remove("hidden");
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => $("#toast").classList.add("hidden"), 4000);
+}
+function setSync(text, kind = "ok") {
+  $("#sync").textContent = text;
+  $("#sync").dataset.kind = kind;
+}
+function notice(text, retry = true) {
+  $("#cloud-notice-text").textContent = text;
+  $("#cloud-notice").classList.remove("hidden");
+  $("#sync-retry").classList.toggle("hidden", !retry);
+}
+function remember() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ uid: activeUID, state: s }));
+  } catch {
+    toast("Device storage is full. Export a backup in Settings.");
+  }
+}
+function mutation(fn, message = "") {
+  if (!ready) return;
+  const previous = clone(s),
+    oldXP = game().xp;
+  fn();
+  if (!valid(s) || new Blob([JSON.stringify(s)]).size > 780000) {
+    s = previous;
+    toast(
+      "Unable to save: check the values or export a backup. This library must stay under 780 KB.",
+    );
+    return;
+  }
+  remember();
+  if (!pending) pendingBase = revision;
+  pending = clone(s);
+  saveDraft();
+  render();
+  setSync("Saving…", "saving");
+  const gained = game().xp - oldXP;
+  if (message) toast(message + (gained > 0 ? ` · +${gained} XP` : ""));
+  flush();
+}
+function saveDraft() {
+  try {
+    localStorage.setItem(
+      DRAFT,
+      JSON.stringify({
+        uid: activeUID,
+        base: pendingBase,
+        state: pending || s,
+      }),
+    );
+  } catch {}
+}
+function pack(v, r) {
+  return { schemaVersion: 2, ...v, revision: r, updatedAt: serverTimestamp() };
+}
+function remoteValid(d) {
+  return (
+    d?.schemaVersion === 2 &&
+    Number.isInteger(d.revision) &&
+    d.revision >= 1 &&
+    valid(d)
+  );
+}
+function applyRemote(data) {
+  if (!remoteValid(data)) throw Error("invalid-data");
+  s = pure(data);
+  revision = data.revision;
+  remember();
+  applyTheme();
+  render();
+  setSync("Cloud synced");
+  $("#cloud-notice").classList.add("hidden");
+}
+function hasDialog() {
+  return $$("dialog").some((d) => d.open);
+}
+function acceptDeferred() {
+  if (deferred && !busy && !pending && !hasDialog()) {
+    let d = deferred;
+    deferred = null;
+    if (d.revision > revision) applyRemote(d);
+  }
+}
+async function flush() {
+  if (!ready || busy || !pending || conflict) return;
+  if (!navigator.onLine) {
+    setSync("Offline · saved here", "error");
+    notice(
+      "Offline. Your edits are stored on this device and will retry when you reconnect.",
+      false,
+    );
+    return;
+  }
+  busy = true;
+  const candidate = clone(pending),
+    base = pendingBase,
+    e = epoch,
+    target = ref;
+  pending = null;
+  try {
+    await runTransaction(db, async (tx) => {
+      const snap = await tx.get(target);
+      if (!snap.exists() || snap.data().revision !== base)
+        throw Error("sync-conflict");
+      tx.set(target, pack(candidate, base + 1));
+    });
+    if (e !== epoch) return;
+    revision = base + 1;
+    if (pending) {
+      pendingBase = revision;
+      saveDraft();
+    } else {
+      try {
+        localStorage.removeItem(DRAFT);
+      } catch {}
+      setSync("Cloud synced");
+      $("#cloud-notice").classList.add("hidden");
+    }
+  } catch (error) {
+    if (e !== epoch) return;
+    if (!pending) pending = candidate;
+    pendingBase = base;
+    saveDraft();
+    conflict = error.message === "sync-conflict";
+    setSync("Not synced", "error");
+    notice(
+      conflict
+        ? "Another device has newer progress. Your edits are safe here. Export a backup in Settings, then choose Retry sync to resolve the conflict."
+        : "Cloud save failed. Your changes are safe on this device. Reconnect and retry.",
+    );
+  } finally {
+    if (e === epoch) {
+      busy = false;
+      acceptDeferred();
+    }
+  }
+  if (pending && !conflict && revision > base) flush();
+}
+function go(r) {
+  if (!Object.hasOwn(routes, r)) return;
+  closeHabitWorkspaces();
+  route = r;
+  location.hash = r;
+  $("#crumb").textContent = routes[r];
+  render();
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+function navHTML(mobile = false) {
+  return Object.entries(routes)
+    .filter(([k]) => k !== "settings")
+    .map(
+      ([k, v]) =>
+        `<button class="${mobile ? "" : "nav-item "}${route === k ? "active" : ""}" data-route="${k}" ${route === k ? 'aria-current="page"' : ""}>${icon(k)}${v}</button>`,
+    )
+    .join("");
+}
+function heading(
+  title,
+  sub,
+  action = "",
+  eyebrow = "Make room for what matters",
+) {
+  return `<div class="page-head"><div><p class="eyebrow">${esc(eyebrow)}</p><h1>${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ""}</div>${action ? `<div class="head-actions">${action}</div>` : ""}</div>`;
+}
+function empty(title, description, action = "") {
+  return `<div class="empty">${icon("spark")}<h3>${esc(title)}</h3><p>${esc(description)}</p>${action}</div>`;
+}
+const newButton = (type = "task", text = "Quick add") =>
+  `<button class="primary" data-action="new-${type}">${icon("plus")}${esc(text)}</button>`;
+function playerCard() {
+  let g = game();
+  return `<section class="player-card" aria-label="Player progression"><div class="player-top"><div><p class="eyebrow">Your next chapter</p><h2 class="player-title">${esc(g.title)}.<br><span>Keep becoming.</span></h2><p class="player-note">Small wins are how the big things happen.</p></div><div class="level-emblem"><small>LEVEL</small>${g.level}</div></div><div class="xp-line"><span><strong>${g.within}</strong> / ${g.needed} XP</span><span>Level ${g.level + 1} at ${g.next} XP</span></div><div class="bar" role="progressbar" aria-label="Progress to next level" aria-valuenow="${g.within}" aria-valuemin="0" aria-valuemax="${g.needed}"><span style="width:${(g.within / g.needed) * 100}%"></span></div><div class="player-bottom"><span>${icon("flame")}<strong>${overallStreak()} day</strong> momentum</span><span>${icon("coin")}<strong>${g.coins}</strong> coins</span><span>${icon("bolt")}<strong>${g.xp}</strong> total XP</span></div></section>`;
+}
+function dailyXP(d = today()) {
+  let n =
+    s.habitLogs
+      .filter((l) => l.date === d && l.value >= l.target)
+      .reduce((a, l) => a + l.xp, 0) +
+    s.taskLogs
+      .filter((l) => l.done && l.doneOn === d)
+      .reduce((a, l) => a + l.xp, 0);
+  n += Math.min(s.focusSessions.filter((f) => f.date === d).length, 4) * 20;
+  return (
+    n +
+    questInfo(d)
+      .filter((q) => q.done)
+      .reduce((a, q) => a + q.xp, 0)
+  );
+}
+function dailyCard() {
+  const habits = s.habits.filter((h) => habitDue(h, today())),
+    done = habits.filter((h) => habitDone(h, today())).length,
+    xp = dailyXP();
+  return `<section class="daily-card"><div class="daily-head"><h3>Today’s momentum</h3><span class="pill">${xp >= s.settings.dailyGoal ? "Goal reached" : "A fresh opportunity"}</span></div><div><div class="daily-score">${xp}<span>/ ${s.settings.dailyGoal} XP</span></div><p class="muted small">${xp >= s.settings.dailyGoal ? "You showed up. That’s worth celebrating." : "Build a good day, one small win at a time."}</p></div><div><div class="bar" style="margin-top:18px"><span style="width:${Math.min(100, (xp / s.settings.dailyGoal) * 100)}%"></span></div><div class="daily-foot"><span>${done}/${habits.length} habits completed</span><span>${s.focusSessions.filter((f) => f.date === today()).reduce((a, f) => a + f.minutes, 0)} min focused</span></div></div></section>`;
+}
+function habitRow(h, d, full = false) {
+  const l = hlog(h, d),
+    done = habitDone(h, d),
+    value = l?.value || 0,
+    target = l?.target || h.target,
+    can = d <= today() && d >= h.createdOn && habitDue(h, d);
+  return `<div class="habit-row ${done ? "is-complete" : ""}" data-habit-row="${h.id}" data-date="${d}" ${full ? `draggable="true" data-habit-drag="${h.id}"` : ""}><button class="check ${done ? "done" : ""}" data-habit-check="${h.id}" data-date="${d}" aria-pressed="${done}" aria-label="${done ? "Undo" : "Complete"} ${esc(h.title)}" ${can ? "" : "disabled"}>${done ? icon("check") : ""}</button><div class="row-icon ${h.area} accent-${hp(h).color}">${icon(hp(h).icon || h.area)}</div><div class="row-content"><button class="row-title ${done ? "done-text" : ""}" data-habit-detail="${h.id}" data-date="${d}">${esc(h.title)}</button><div class="row-meta"><span>${esc(areas[h.area])}</span><span>·</span><span>${
+    target > 1
+      ? `${value}/${target} ${esc(h.unit)}`
+      : hp(h).frequency === "weekly"
+        ? `${weekWins(h, d)}/${hp(h).weeklyTarget} this week`
+        : schedule(h, d).length === 7
+          ? "Every day"
+          : schedule(h, d)
+              .map((n) => ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"][n])
+              .join(", ")
+  }</span>${h.archived ? "<span>Archived</span>" : isHabitPaused(h, d) ? "<span>· Paused</span>" : ""}${l?.detail?.status ? `<span>· ${esc(statusLabel(l.detail.status))}</span>` : ""}</div>${target > 1 ? `<div class="habit-mini-bar" aria-label="${value} of ${target}"><span style="width:${Math.min(100, (100 * value) / target)}%"></span></div>` : ""}</div>${target > 1 && !h.archived ? `<div class="stepper"><button data-habit-step="${h.id}" data-date="${d}" data-step="-1" aria-label="Decrease ${esc(h.title)}" ${value === 0 || !can ? "disabled" : ""}>−</button><button data-habit-step="${h.id}" data-date="${d}" data-step="1" aria-label="Increase ${esc(h.title)}" ${done || !can ? "disabled" : ""}>+</button></div>` : ""}${full ? `<span class="streak-badge" title="${hp(h).frequency === "weekly" ? "Consecutive successful weeks" : "Consecutive scheduled check-ins"}">${icon("flame")}${habitStreak(h, d)}</span>` : `<span class="xp-tag ${done ? "positive-text" : ""}">${done ? "✓ Done" : "+" + XP[h.effort] + " XP"}</span>`}</div>`;
+}
+function taskRow(t) {
+  const log = tlog(t),
+    done = !!log?.done,
+    sub = t.subtasks.length,
+    steps = log?.steps?.length || 0;
+  return `<div class="task-row"><button class="check round ${done ? "done" : ""}" data-task-check="${t.id}" aria-pressed="${done}" aria-label="${done ? "Undo" : "Complete"} ${esc(t.title)}" ${t.archived ? "disabled" : ""}>${done ? icon("check") : ""}</button><div class="row-content"><button class="row-title ${done ? "done-text" : ""}" data-task-detail="${t.id}">${esc(t.title)}</button><div class="row-meta"><span class="priority-dot ${t.priority}"></span><span>${esc(areas[t.area])}</span>${t.dueDate ? `<span>·</span><span ${t.repeat === "none" && t.dueDate < today() && !done ? 'class="danger"' : ""}>${t.repeat === "none" ? (t.dueDate === today() ? "Today" : dateLabel(t.dueDate)) : t.repeat === "daily" ? "Daily" : "Weekly"}</span>` : ""}${sub ? `<span>· ${Math.min(steps, sub)}/${sub} steps</span>` : ""}${t.status === "doing" && !done ? "<span>· In progress</span>" : ""}</div></div><span class="xp-tag ${done ? "positive-text" : ""}">${done ? "✓ Done" : "+" + XP[t.effort] + " XP"}</span></div>`;
+}
+function sortedTasks(arr) {
+  return [...arr].sort(
+    (a, b) =>
+      ({ high: 0, normal: 1, low: 2 })[a.priority] -
+        { high: 0, normal: 1, low: 2 }[b.priority] ||
+      (a.dueDate || "9999").localeCompare(b.dueDate || "9999"),
+  );
+}
+let ritualFilter = "all";
+function todayPage() {
+  const d=today(), due=s.habits.filter(h=>habitDue(h,d)), done=due.filter(h=>habitDone(h,d)).length,
+    g=game(), minutes=s.focusSessions.filter(f=>f.date===d).reduce((n,f)=>n+f.minutes,0),
+    tasks=sortedTasks(s.tasks.filter(t=>taskDue(t)&&!taskDone(t)&&(!t.dueDate||t.dueDate<=d))).slice(0,3),
+    visible=due.filter(h=>ritualFilter==='all'||(ritualFilter==='done'?habitDone(h,d):!habitDone(h,d)));
+  return heading('Make room for what matters.', dateLabel(d,{weekday:'long',month:'long',day:'numeric'})+' · A little progress is still progress.',newButton('task','Quick add'))+
+  `<section class="progress-snapshot" aria-label="Today at a glance"><div><span>Today’s rituals</span><strong>${done} of ${due.length}</strong><small>Keep showing up</small><div class="snapshot-bar bar"><span style="width:${due.length?100*done/due.length:0}%"></span></div></div><div><span>Focused time</span><strong>${minutes} min</strong><small>A little space, well spent</small></div><div><span>Your momentum</span><strong>${overallStreak()} ${overallStreak()===1?'day':'days'}</strong><small>One small win at a time</small></div><div><span>${esc(g.title)} · Level ${g.level}</span><strong class="accent-text">${g.within} / ${g.needed} XP</strong><small>${g.needed-g.within} XP to your next chapter</small></div></section>
+  <div class="today-layout"><section class="ritual-section"><div class="section-title"><div><h2>Your daily rituals</h2><p>Small actions. A stronger everyday.</p></div><button class="link-btn" data-route="habits">See all habits ${icon('arrow')}</button></div><div class="ritual-filters" aria-label="Filter daily rituals">${[['all','All rituals'],['open','In progress'],['done','Completed']].map(([k,v])=>`<button data-ritual-filter="${k}" class="${ritualFilter===k?'active':''}" aria-pressed="${ritualFilter===k}">${v}</button>`).join('')}</div><div class="daily-rituals">${visible.length?visible.map(h=>habitRow(h,d)).join(''):empty(due.length?'A little breathing room':'Space for a small ritual',due.length?'No habits match this view.':'No habits scheduled today. Rest, or start something new.',due.length?'':newButton('habit','Add a habit'))}</div><button class="link-btn add-ritual" data-action="new-habit">${icon('plus')}New habit</button></section>
+  <aside class="today-rail"><section class="panel next-steps"><div class="panel-head"><div><h2>Move one thing forward</h2><p>Your next clear steps.</p></div></div><div class="panel-body">${tasks.length?tasks.map(taskRow).join(''):empty('A little breathing room','Capture one thing you’d feel good about finishing.',newButton('task','Add a task'))}</div><div class="panel-footer"><button class="link-btn" data-route="tasks">View tasks ${icon('arrow')}</button></div></section><section class="quiet-focus"><span class="accent-text">${icon('focus')}</span><h2>A little quiet goes a long way.</h2><button class="primary" data-route="focus">${icon('play')}Make a little space · Focus</button></section><section class="chapter-card"><div>${icon('spark')}<strong>Your next chapter</strong></div><p>${esc(g.title)} · Level ${g.level}</p><div class="bar" role="progressbar" aria-label="Progress to next level" aria-valuenow="${g.within}" aria-valuemin="0" aria-valuemax="${g.needed}"><span style="width:${100*g.within/g.needed}%"></span></div><button class="link-btn" data-route="journey">${g.coins} coins · Explore your journey ${icon('arrow')}</button></section></aside></div>
+  <details class="daily-quests"><summary>Daily side quests <span>${questInfo(d).filter(q=>q.done).length}/3 complete</span></summary><p class="help">Optional little challenges. Reset each day.</p><div class="quest-strip">${questInfo(d).map(q=>`<div class="quest ${q.done?'completed':''}"><div class="quest-top">${icon(q.done?'check':q.icon)}<span class="xp-tag">${q.done?'Earned':'+'+q.xp+' XP'}</span></div><h3>${q.name}</h3><p>${q.description}</p></div>`).join('')}</div></details>`;
+}
+function habitsPage() {
+  const d = selectedDate || today(),
+    days = Array.from({ length: 7 }, (_, i) => addDays(today(), i - 6)),
+    habits = s.habits.filter((h) =>
+      showArchived
+        ? h.archived
+        : habitDue(h, d) ||
+          (!h.archived && hp(h).pauseUntil >= d && hp(h).pauseFrom <= d),
+    );
+  return (
+    heading(
+      "Build your everyday.",
+      "Rituals that fit your life. Make each one your own.",
+      `<button data-action="habit-templates">${icon("spark")}Templates</button>${newButton("habit", "New habit")}`,
+      "Habits / consistency over intensity",
+    ).replace('class="page-head"', 'class="page-head habits-head"') +
+    `<div class="week-strip" aria-label="Check-in date">${days.map((k) => `<button class="day ${d === k ? "selected" : ""} ${s.habitLogs.some((l) => l.date === k && l.value >= l.target) ? "has-activity" : ""}" data-select-date="${k}" aria-pressed="${d === k}" aria-label="${dateLabel(k, { weekday: "long", month: "long", day: "numeric" })}"><span>${dateLabel(k, { weekday: "short" })}</span><strong>${Number(k.slice(-2))}</strong><span class="day-mark"></span></button>`).join("")}</div><div class="toolbar"><h2>${d === today() ? "Today’s habits" : dateLabel(d, { weekday: "long", month: "short", day: "numeric" })}</h2><div class="segments"><button data-action="active-habits" class="${!showArchived ? "active" : ""}">Scheduled</button><button data-action="archived-habits" class="${showArchived ? "active" : ""}">Archived</button></div></div><section class="panel habit-list">${habits.length ? habits.map((h) => habitRow(h, d, true)).join("") : empty(showArchived ? "No archived habits" : "A little space to begin", showArchived ? "Habits you archive will appear here." : "No habits scheduled on this day.", newButton("habit", "Create a habit"))}</section><p class="help" style="margin-top:16px">Tap a checkbox to complete; tap a habit name for details. Log today or the last 6 days. Weekly goals count completed days, Monday–Sunday. Rest and skip entries earn no XP.</p>`
+  );
+}
+function tasksPage() {
+  let tasks = s.tasks
+    .filter((t) => (taskFilter === "archived" ? t.archived : !t.archived))
+    .filter((t) => taskArea === "all" || t.area === taskArea)
+    .filter((t) =>
+      (t.title + " " + t.notes)
+        .toLowerCase()
+        .includes(taskSearch.toLowerCase()),
+    );
+  if (taskFilter === "open") tasks = tasks.filter((t) => !taskDone(t));
+  if (taskFilter === "today")
+    tasks = tasks.filter(
+      (t) => taskDue(t) && !taskDone(t) && (!t.dueDate || t.dueDate <= today()),
+    );
+  if (taskFilter === "done") tasks = tasks.filter((t) => taskDone(t));
+  tasks = sortedTasks(tasks);
+  const tabs = {
+    all: "All",
+    open: "Open",
+    today: "Today",
+    done: "Done",
+    archived: "Archived",
+  };
+  return (
+    heading(
+      "Clear head. Next step.",
+      "Make the big things smaller. Then take one step.",
+      newButton("task", "New task"),
+      "Tasks / one thing at a time",
+    ) +
+    `<div class="toolbar"><div class="toolbar-left"><input class="search-input" id="task-search" type="search" aria-label="Search tasks" placeholder="Search tasks…" value="${esc(taskSearch)}"><select id="task-area" aria-label="Filter by area"><option value="all">All areas</option>${Object.entries(
+      areas,
+    )
+      .map(
+        ([k, v]) =>
+          `<option value="${k}" ${taskArea === k ? "selected" : ""}>${v}</option>`,
+      )
+      .join(
+        "",
+      )}</select></div><div class="segments"><button data-task-view="list" class="${taskView === "list" ? "active" : ""}">List</button><button data-task-view="board" class="${taskView === "board" ? "active" : ""}">Board</button></div></div><div class="toolbar"><div class="segments">${Object.entries(
+      tabs,
+    )
+      .map(
+        ([k, v]) =>
+          `<button data-task-filter="${k}" class="${taskFilter === k ? "active" : ""}">${v}</button>`,
+      )
+      .join(
+        "",
+      )}</div><span class="small muted">${tasks.length} task${tasks.length === 1 ? "" : "s"}</span></div>${
+      taskView === "board"
+        ? `<div class="board">${[
+            ["todo", "To do"],
+            ["doing", "In progress"],
+            ["done", "Done"],
+          ]
+            .map(([k, v]) => {
+              let a = tasks.filter((t) =>
+                k === "done" ? taskDone(t) : !taskDone(t) && t.status === k,
+              );
+              return `<section class="board-column"><h3>${v}<span class="muted">${a.length}</span></h3>${a.map(taskRow).join("") || '<p class="help">A little room for your next step.</p>'}</section>`;
+            })
+            .join("")}</div>`
+        : `<section class="panel task-list">${tasks.length ? tasks.map(taskRow).join("") : empty("Nothing here. That’s okay.", taskSearch ? "Try another search or change your filters." : "Capture a next step when you’re ready.", newButton("task", "New task"))}</section>`
+    }<p class="help" style="margin-top:16px">Recurring tasks have one check-in per scheduled day. Completing a task also completes its checklist. Future recurring tasks can’t be checked in early.</p>`
+  );
+}
+function achievements() {
+  const g = game();
+  return [
+    {
+      title: "First little win",
+      desc: "Complete your first habit, task, or focus session.",
+      value: g.hc + g.tc + g.focus,
+      target: 1,
+      icon: "spark",
+    },
+    {
+      title: "Ritual builder",
+      desc: "Complete 7 habit check-ins.",
+      value: g.hc,
+      target: 7,
+      icon: "habits",
+    },
+    {
+      title: "Getting things done",
+      desc: "Finish 10 tasks or recurring task occurrences.",
+      value: g.tc,
+      target: 10,
+      icon: "tasks",
+    },
+    {
+      title: "A week of momentum",
+      desc: "Be active on 7 consecutive days.",
+      value: bestStreak(),
+      target: 7,
+      icon: "flame",
+    },
+    {
+      title: "Deep thinker",
+      desc: "Finish 10 focus sessions.",
+      value: g.focus,
+      target: 10,
+      icon: "focus",
+    },
+    {
+      title: "Pathfinder",
+      desc: "Reach level 5.",
+      value: g.level,
+      target: 5,
+      icon: "journey",
+    },
+  ];
+}
+function bestStreak() {
+  let days = [...activeDays()].sort(),
+    best = 0,
+    n = 0,
+    last = "";
+  for (const d of days) {
+    n = last && addDays(last, 1) === d ? n + 1 : 1;
+    best = Math.max(best, n);
+    last = d;
+  }
+  return best;
+}
+function activity() {
+  const rows = [];
+  for (const l of s.habitLogs.filter((l) => l.value >= l.target))
+    rows.push({
+      title:
+        s.habits.find((h) => h.id === l.habitId)?.title || "Habit check-in",
+      date: l.date,
+      xp: l.xp,
+      icon: "habits",
+    });
+  for (const l of s.taskLogs.filter((l) => l.done))
+    rows.push({
+      title: s.tasks.find((t) => t.id === l.taskId)?.title || "Task completed",
+      date: l.doneOn,
+      xp: l.xp,
+      icon: "tasks",
+    });
+  const fs = {};
+  for (const f of [...s.focusSessions].sort((a, b) =>
+    a.completedAt.localeCompare(b.completedAt),
+  )) {
+    fs[f.date] = (fs[f.date] || 0) + 1;
+    rows.push({
+      title: `${f.minutes} minutes of focus${f.taskTitle ? " · " + f.taskTitle : ""}`,
+      date: f.date,
+      xp: fs[f.date] <= 4 ? 20 : 0,
+      icon: "focus",
+    });
+  }
+  for (const d of activeDays())
+    for (const q of questInfo(d).filter((q) => q.done))
+      rows.push({
+        title: q.name + " · side quest",
+        date: d,
+        xp: q.xp,
+        icon: "star",
+      });
+  return rows.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 15);
+}
+function journeyPage() {
+  let g = game(),
+    a = achievements(),
+    rows = activity();
+  return (
+    heading(
+      "Look how far you’re going.",
+      "Every small action is part of a bigger story.",
+      `<span class="pill">Level ${g.level} · ${g.title}</span>`,
+      "Journey / progress, not perfection",
+    ) +
+    `<div class="metric-grid">${[
+      [g.xp, "Total experience", "Every completed action counts"],
+      [g.coins, "Available coins", "1 coin for every 10 XP"],
+      [
+        bestStreak() + (bestStreak() === 1 ? " day" : " days"),
+        "Best momentum streak",
+        "A day with at least one win",
+      ],
+      [g.minutes + " min", "Focused time", "Real sessions. Real space."],
+    ]
+      .map(
+        ([v, k, n]) =>
+          `<section class="metric"><p class="eyebrow">${k}</p><strong>${v}</strong><p>${n}</p></section>`,
+      )
+      .join(
+        "",
+      )}</div><div class="section-title"><h2>Milestones worth keeping</h2><span class="small muted">${a.filter((x) => x.value >= x.target).length}/${a.length} unlocked</span></div><div class="achievement-grid">${a.map((x) => `<section class="achievement ${x.value < x.target ? "locked" : ""}"><div class="badge-icon">${icon(x.icon)}</div><h3>${x.title}</h3><p>${x.desc}</p><small>${x.value >= x.target ? "✓ Unlocked" : Math.min(x.value, x.target) + " / " + x.target}</small></section>`).join("")}</div><div class="section-title"><div><h2>A little reward goes a long way</h2><p>Virtual coins. Real moments you choose.</p></div><button class="link-btn" data-action="new-reward">${icon("plus")}Add reward</button></div><div class="reward-grid">${
+      s.rewards
+        .filter((r) => !r.archived)
+        .map(
+          (r) =>
+            `<section class="reward"><div class="row-icon life">${icon("gift")}</div><div class="row-content"><h3>${esc(r.title)}</h3><p>${r.cost} coins · <button class="link-btn" data-delete-reward="${r.id}" style="min-height:24px;font-size:11px">Remove</button></p></div><button class="${g.coins >= r.cost ? "primary" : ""}" data-redeem="${r.id}" ${g.coins < r.cost ? "disabled" : ""}>${icon("coin")}Claim</button></section>`,
+        )
+        .join("") ||
+      empty(
+        "Something to look forward to",
+        "Add a reward that feels good to you.",
+      )
+    } </div>${g.coins < 0 ? '<p class="help danger" style="margin-top:12px">Some completed actions were undone after spending coins. New earnings first cover this balance.</p>' : ""}<div class="section-title"><h2>Your recent wins</h2><span class="small muted">Last 15 actions</span></div><section class="panel">${rows.map((r) => `<div class="activity-row"><div class="row-icon">${icon(r.icon)}</div><div class="row-content"><strong>${esc(r.title)}</strong><p>${dateLabel(r.date, { weekday: "short", month: "short", day: "numeric" })}</p></div><span class="xp-tag">+${r.xp} XP</span></div>`).join("") || empty("The first win is waiting", "Check in a habit or finish a task. Your story starts there.")}</section>${
+      s.redemptions.length
+        ? `<div class="section-title"><h2>Rewards enjoyed</h2></div><section class="panel">${s.redemptions
+            .slice(-5)
+            .reverse()
+            .map(
+              (r) =>
+                `<div class="activity-row">${icon("gift")}<div class="row-content"><strong>${esc(r.title)}</strong><p>${dateLabel(r.date)} · ${r.cost} coins</p></div></div>`,
+            )
+            .join("")}</section>`
+        : ""
+    }<p class="help" style="margin-top:20px">Progress is personal, not a competition. Undoing a completion removes its XP and related quest bonuses. Rechecking the same action never stacks duplicate XP. Achievements reflect your current recorded history.</p>`
+  );
+}
+function remaining() {
+  if (!timer) return focusMinutes * 60000;
+  return timer.endsAt
+    ? Math.max(0, timer.endsAt - Date.now())
+    : timer.remainingMs;
+}
+function timerText() {
+  let secs = Math.ceil(remaining() / 1000);
+  return (
+    String(Math.floor(secs / 60)).padStart(2, "0") +
+    ":" +
+    String(secs % 60).padStart(2, "0")
+  );
+}
+function focusPage() {
+  let selected = timer?.taskId || "",
+    f = s.focusSessions.filter((x) => x.date === today());
+  return (
+    heading(
+      "One thing. Your full attention.",
+      "Make a little space for the work that matters.",
+      "",
+      "Focus / less noise, more presence",
+    ) +
+    `<div class="focus-layout"><section class="timer-card"><p class="eyebrow">Your quiet corner</p><div class="segments">${[25, 45, 60].map((n) => `<button data-duration="${n}" class="${(timer?.plannedMinutes || focusMinutes) === n ? "active" : ""}" ${timer ? "disabled" : ""}>${n} min</button>`).join("")}</div><div class="timer-ring"><div class="timer-digits" id="timer-digits" role="timer" aria-label="Focus time remaining">${timerText()}</div><p class="muted small" id="timer-status">${timer?.endsAt ? "Stay with this moment." : timer ? "Paused. Take a breath." : "Ready when you are."}</p></div><label class="field" style="max-width:320px;margin:auto">Focus on <select id="focus-task" ${timer ? "disabled" : ""}><option value="">Just a little quiet time</option>${s.tasks
+      .filter((t) => !t.archived && !taskDone(t))
+      .map(
+        (t) =>
+          `<option value="${t.id}" ${t.id === selected ? "selected" : ""}>${esc(t.title)}</option>`,
+      )
+      .join(
+        "",
+      )}</select></label><div class="timer-actions"><button class="primary" data-action="timer-toggle">${icon(timer?.endsAt ? "pause" : "play")}${timer?.endsAt ? "Pause" : timer ? "Resume" : "Start focus"}</button>${timer ? '<button class="icon-btn" data-action="timer-reset" aria-label="End focus without reward">' + icon("reset") + "</button>" : ""}</div><p class="help">Finish a full session to earn 20 XP.<br>XP applies to the first 4 completed sessions per day.</p></section><div><section class="panel focus-tips"><h2>Give yourself a little room.</h2><ul><li>Choose one small outcome before you start.</li><li>Put distractions out of reach. Silence isn’t required.</li><li>Your timer survives a refresh on this device.</li><li>When time is up, take a break. You’ve earned it.</li></ul><p class="help">The timer uses actual elapsed time and continues while this tab is in the background. Reopen Folio to record a session that ends while the browser is closed.</p></section><div class="section-title"><h2>Today’s focus</h2><span class="pill">${f.reduce((n, v) => n + v.minutes, 0)} min</span></div><section class="panel">${
+      f.length
+        ? f
+            .slice(-5)
+            .reverse()
+            .map(
+              (x) =>
+                `<div class="activity-row">${icon("focus")}<div class="row-content"><strong>${x.minutes} focused minutes</strong><p>${esc(x.taskTitle || "A little quiet time")}</p></div>${icon("check")}</div>`,
+            )
+            .join("")
+        : empty("Your time is yours", "Start a session and make it count.")
+    }</section></div></div>`
+  );
+}
+let focusMinutes = 25;
+function settingsPage() {
+  return (
+    heading(
+      "Make it feel like you.",
+      "A few preferences. A little peace of mind.",
+      "",
+      "Settings / your space, your rules",
+    ) +
+    `<div class="settings-grid"><section class="panel settings-section"><h2>Your space</h2><p>Keep your rhythm personal.</p><form id="settings-form" class="fields"><label class="field">Display name<input name="name" maxlength="40" value="${esc(s.settings.name || profileName)}" required></label><div class="field-row"><label class="field">Daily XP goal<input name="goal" type="number" min="10" max="1000" value="${s.settings.dailyGoal}" required></label><label class="field">Appearance<select name="theme">${["system", "light", "dark"].map((v) => `<option value="${v}" ${s.settings.theme === v ? "selected" : ""}>${v[0].toUpperCase() + v.slice(1)}</option>`).join("")}</select></label></div><label class="field">Calendar time zone<input name="zone" value="${esc(s.settings.timeZone)}" placeholder="America/Sao_Paulo" required></label><p class="help">Habit days, streaks, and daily quests use this time zone. Changing it does not rewrite existing check-ins.</p><button class="primary">Save preferences</button></form></section><div class="fields"><section class="panel settings-section"><h2>Safe, synced, yours.</h2><p>Google sign-in. Owner-only Firestore access. No public profiles or leaderboards.</p><p class="help">Library size: ${Math.ceil(new Blob([JSON.stringify(s)]).size / 1024)} KB / 780 KB. Private local recovery copies remain on this browser after sign-out; clear site data on shared devices.</p><div class="compact-actions"><button data-action="export">${icon("download")}Export backup</button><button data-action="import">${icon("upload")}Import backup</button></div><p class="help" style="margin-top:14px">Import replaces habit and task progress, including rewards. It never changes your book library.</p></section><section class="panel settings-section"><h2>Your book library is still here.</h2><p>Your original Folio books and reading progress are preserved in a separate cloud document.</p><a href="./books.html">Open book tracker →</a></section><section class="panel settings-section"><h2>A gentle game, not another chore.</h2><p>10 / 20 / 40 XP per action, based on effort. Side quests add a daily bonus. Level thresholds rise as you grow. No XP penalties for missed days.</p><button data-action="signout" class="ghost danger">${icon("logout")}Sign out</button></section></div></div>`
+  );
+}
+function render() {
+  if (!s) return;
+  applyTheme();
+  $(".desktop-nav").innerHTML = navHTML();
+  $(".mobile-nav").innerHTML = navHTML(true);
+  $("#crumb").textContent = routes[route];
+  let g = game(),
+    name = s.settings.name || profileName;
+  $("#top-avatar").textContent = name.slice(0, 2).toUpperCase();
+  $("#side-player").innerHTML =
+    `<div class="side-level"><div class="avatar">${esc(name.slice(0, 2).toUpperCase())}</div><div><strong style="font-size:13px">${esc(name)}</strong><p class="muted" style="font-size:11px">Level ${g.level} · ${g.title}</p></div></div>`;
+  $("#content").innerHTML = {
+    today: todayPage,
+    habits: habitsPage,
+    tasks: tasksPage,
+    focus: focusPage,
+    journey: journeyPage,
+    settings: settingsPage,
+  }[route]();
+}
+function openEditor(type, itemId = null) {
+  closeHabitWorkspaces();
+  editType = type;
+  editId = itemId;
+  const item = (type === "habit" ? s.habits : s.tasks).find(
+    (x) => x.id === itemId,
+  );
+  $("#editor-title").textContent = (item ? "Edit " : "New ") + type;
+  $("#type-tabs").classList.toggle("hidden", !!item);
+  $("#task-fields").classList.toggle("hidden", type !== "task");
+  $("#habit-fields").classList.toggle("hidden", type !== "habit");
+  $$("[data-editor-type]").forEach((b) =>
+    b.classList.toggle("active", b.dataset.editorType === type),
+  );
+  $("#item-title").value = item?.title || "";
+  $("#item-notes").value = item?.notes || "";
+  $("#item-area").value = item?.area || "life";
+  $("#item-effort").value = item?.effort || "normal";
+  $("#item-due").value = item?.dueDate || today();
+  $("#item-priority").value = item?.priority || "normal";
+  $("#item-repeat").value = item?.repeat || "none";
+  $("#item-status").value = item?.status || "todo";
+  $("#item-subtasks").value =
+    item?.subtasks?.map((x) => x.title).join("\n") || "";
+  $("#item-target").value = item?.target || 1;
+  $("#item-unit").value = item?.unit || "check-in";
+  populateHabitEditor(item, type);
+  const days =
+    item && type === "habit" ? schedule(item, today()) : [0, 1, 2, 3, 4, 5, 6];
+  $("#schedule-picker").innerHTML = ["S", "M", "T", "W", "T", "F", "S"]
+    .map(
+      (d, i) =>
+        `<label><input type="checkbox" name="weekday" value="${i}" ${days.includes(i) ? "checked" : ""} aria-label="${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][i]}"><span>${d}</span></label>`,
+    )
+    .join("");
+  $("#archive-item").classList.toggle("hidden", !item);
+  $("#archive-item").textContent = item?.archived ? "Restore" : "Archive";
+  $("#form-error").textContent = "";
+  if (!$("#editor").open) $("#editor").showModal();
+  $("#item-title").focus();
+}
+function ensureTaskLog(t) {
+  let l = tlog(t);
+  if (!l) {
+    l = {
+      key: taskKey(t),
+      taskId: t.id,
+      date: today(),
+      done: false,
+      doneOn: "",
+      xp: XP[t.effort],
+      area: t.area,
+      steps: [],
+    };
+    s.taskLogs.push(l);
+  }
+  return l;
+}
+function updateHabit(hid, d, value = null) {
+  const h = s.habits.find((h) => h.id === hid);
+  if (!h || !habitDue(h, d) || d > today() || d < addDays(today(), -6)) return;
+  mutation(() => {
+    let l = hlog(h, d);
+    if (!l) {
+      l = {
+        id: h.id + "|" + d,
+        habitId: h.id,
+        date: d,
+        value: 0,
+        target: h.target,
+        xp: XP[h.effort],
+        area: h.area,
+      };
+      s.habitLogs.push(l);
+    }
+    if (l.detail) l.detail.status = "";
+    l.value =
+      value === null
+        ? l.value >= l.target
+          ? 0
+          : l.target
+        : Math.max(0, Math.min(l.target, value));
+  }, "Check-in updated");
+  if ($("#habit-detail").open) openHabitDetail(hid, d);
+}
+function toggleTask(tid) {
+  const t = s.tasks.find((t) => t.id === tid);
+  if (!t || t.archived) return;
+  if (t.repeat !== "none" && !taskDue(t)) {
+    toast("This recurring task is not scheduled for today.");
+    return;
+  }
+  mutation(() => {
+    const l = ensureTaskLog(t);
+    l.done = !l.done;
+    l.doneOn = l.done ? today() : "";
+    if (l.done) l.steps = t.subtasks.map((x) => x.id);
+  }, "Task updated");
+  if ($("#detail").open) openDetail(tid);
+}
+function openDetail(tid) {
+  detailId = tid;
+  const t = s.tasks.find((t) => t.id === tid);
+  if (!t) return;
+  $("#detail-title").textContent = t.title;
+  const l = tlog(t),
+    done = !!l?.done;
+  $("#detail-body").innerHTML =
+    `<div class="row-meta"><span class="pill">${esc(areas[t.area])}</span><span>${XP[t.effort]} XP</span><span>· ${esc(t.priority)} priority</span>${t.repeat !== "none" ? "<span>· " + t.repeat + "</span>" : ""}</div>${t.notes ? `<div class="note-box">${esc(t.notes)}</div>` : ""}${t.subtasks.length ? `<div class="subtasks">${t.subtasks.map((q) => `<label class="subtask"><input type="checkbox" data-subtask="${q.id}" data-task="${t.id}" ${l?.steps.includes(q.id) ? "checked" : ""} ${t.archived ? "disabled" : ""}><span>${esc(q.title)}</span></label>`).join("")}</div>` : '<p class="help" style="margin:20px 0">One clear next step is enough.</p>'}<div class="form-actions"><button data-edit-task="${t.id}">${icon("edit")}Edit</button><button class="primary" data-task-check="${t.id}" ${t.archived ? "disabled" : ""}>${icon("check")}${done ? "Undo completion" : "Complete task"}</button></div>`;
+  if (!$("#detail").open) $("#detail").showModal();
+}
+$("#edit-form").onsubmit = (e) => {
+  e.preventDefault();
+  const title = $("#item-title").value.trim(),
+    notes = $("#item-notes").value.trim(),
+    area = $("#item-area").value,
+    effort = $("#item-effort").value,
+    d = today();
+  if (!title) {
+    $("#form-error").textContent = "Give this a short, clear name.";
+    return;
+  }
+  if (editType === "habit") {
+    const days = $$("#schedule-picker input:checked").map((i) =>
+        Number(i.value),
+      ),
+      target = Number($("#item-target").value),
+      unit = $("#item-unit").value.trim();
+    if (
+      !days.length ||
+      !Number.isInteger(target) ||
+      target < 1 ||
+      target > 100000 ||
+      !unit
+    ) {
+      $("#form-error").textContent =
+        "Choose at least one day, a target from 1–100000, and a unit.";
+      return;
+    }
+    const profile = readHabitProfile();
+    if (!validProfile(profile)) {
+      $("#form-error").textContent =
+        "Check the habit details. Use up to 8 checklist steps, 4 custom fields, and a valid pause date.";
+      return;
+    }
+    const previousHabit = s.habits.find((h) => h.id === editId);
+    if (
+      previousHabit &&
+      (hp(previousHabit).frequency !== profile.frequency ||
+        hp(previousHabit).weeklyTarget !== profile.weeklyTarget) &&
+      s.habitLogs.some((l) => l.habitId === editId && l.value >= l.target)
+    ) {
+      $("#form-error").textContent =
+        "This habit has completed history. Duplicate it to change its goal frequency or weekly target without rewriting streaks.";
+      return;
+    }
+    mutation(() => {
+      let h = s.habits.find((h) => h.id === editId);
+      if (h) {
+        Object.assign(h, { title, notes, area, effort, target, unit, profile });
+        if (schedule(h, d).join(",") !== days.join(",")) {
+          h.scheduleChanges = h.scheduleChanges.filter((c) => c.from !== d);
+          h.scheduleChanges.push({ from: d, days });
+        }
+      } else
+        s.habits.push({
+          id: id(),
+          title,
+          notes,
+          area,
+          effort,
+          target,
+          unit,
+          profile,
+          createdOn: d,
+          scheduleChanges: [{ from: d, days }],
+          archived: false,
+        });
+    }, "Habit saved");
+  } else {
+    const repeat = $("#item-repeat").value,
+      dueDate = $("#item-due").value,
+      priority = $("#item-priority").value,
+      status = $("#item-status").value,
+      lines = $("#item-subtasks")
+        .value.split("\n")
+        .map((x) => x.trim())
+        .filter(Boolean);
+    if (
+      lines.length > 8 ||
+      lines.some((x) => x.length > 100) ||
+      (repeat !== "none" && !dueDate)
+    ) {
+      $("#form-error").textContent =
+        "Use up to 8 checklist steps, each under 100 characters. Recurring tasks need a start date.";
+      return;
+    }
+    const previous = s.tasks.find((t) => t.id === editId);
+    if (
+      previous &&
+      previous.repeat !== repeat &&
+      s.taskLogs.some((l) => l.taskId === previous.id)
+    ) {
+      $("#form-error").textContent =
+        "This task already has history. Archive it and create a new task to change its repeat schedule.";
+      return;
+    }
+    if (!editId && route === "tasks") {
+      taskFilter = "open";
+      taskSearch = "";
+      taskArea = "all";
+    }
+    mutation(() => {
+      let t = s.tasks.find((t) => t.id === editId);
+      const subtasks = lines.map((title) => ({
+        id: t?.subtasks.find((q) => q.title === title)?.id || id(),
+        title,
+      }));
+      if (t) {
+        Object.assign(t, {
+          title,
+          notes,
+          area,
+          effort,
+          dueDate,
+          priority,
+          repeat,
+          status,
+          subtasks,
+        });
+        for (const l of s.taskLogs.filter((l) => l.taskId === t.id)) {
+          l.steps = l.steps.filter((x) => subtasks.some((q) => q.id === x));
+          if (l.done) l.steps = subtasks.map((q) => q.id);
+        }
+      } else
+        s.tasks.push({
+          id: id(),
+          title,
+          notes,
+          area,
+          effort,
+          dueDate,
+          priority,
+          repeat,
+          status,
+          subtasks,
+          createdOn: d,
+          archived: false,
+        });
+    }, "Task saved");
+  }
+  $("#editor").close();
+};
+$("#archive-item").onclick = () => {
+  const list = editType === "habit" ? s.habits : s.tasks,
+    item = list.find((x) => x.id === editId);
+  if (!item) return;
+  mutation(
+    () => (item.archived = !item.archived),
+    item.archived ? "Restored" : "Archived · your history is preserved",
+  );
+  $("#editor").close();
+};
+function exportBackup() {
+  const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            format: "folio-quest",
+            version: 2,
+            exportedAt: new Date().toISOString(),
+            state: s,
+          },
+          null,
+          2,
+        ),
+      ],
+      { type: "application/json" },
+    ),
+    url = URL.createObjectURL(blob),
+    a = document.createElement("a");
+  a.href = url;
+  a.download = "folio-progress-" + today() + ".json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+$("#import-file").onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    if (f.size > 1000000) throw Error();
+    const v = JSON.parse(await f.text());
+    if (v.format !== "folio-quest" || v.version !== 2 || !valid(v.state))
+      throw Error();
+    if (
+      confirm(
+        "Replace your habit and task progress, including XP and rewards, with this backup? Your book library will not change.",
+      )
+    )
+      mutation(() => (s = pure(v.state)), "Backup restored");
+  } catch {
+    toast("Invalid backup. Choose a Folio habit/task JSON export under 1 MB.");
+  }
+  e.target.value = "";
+};
+function storeTimer() {
+  try {
+    if (timer) localStorage.setItem(TIMER, JSON.stringify(timer));
+    else localStorage.removeItem(TIMER);
+  } catch {}
+}
+function startPause() {
+  if (timer?.endsAt) {
+    const now = Date.now();
+    timer.activeMs += Math.min(
+      timer.remainingMs,
+      Math.max(0, now - timer.runStarted),
+    );
+    timer.remainingMs = Math.max(0, timer.endsAt - now);
+    timer.endsAt = null;
+    timer.runStarted = null;
+  } else if (timer) {
+    timer.runStarted = Date.now();
+    timer.endsAt = Date.now() + timer.remainingMs;
+  } else {
+    const t = s.tasks.find((t) => t.id === $("#focus-task")?.value);
+    timer = {
+      id: id(),
+      uid: activeUID,
+      plannedMinutes: focusMinutes,
+      remainingMs: focusMinutes * 60000,
+      endsAt: Date.now() + focusMinutes * 60000,
+      runStarted: Date.now(),
+      activeMs: 0,
+      taskId: t?.id || "",
+      taskTitle: t?.title || "",
+    };
+  }
+  storeTimer();
+  render();
+}
+function tick() {
+  if (timer?.uid !== activeUID) return;
+  if (timer?.endsAt && Date.now() >= timer.endsAt && ready) {
+    const completed = timer;
+    completed.activeMs += completed.remainingMs;
+    if (
+      completed.activeMs + 1000 >= completed.plannedMinutes * 60000 &&
+      !s.focusSessions.some((f) => f.id === completed.id)
+    ) {
+      mutation(
+        () =>
+          s.focusSessions.push({
+            id: completed.id,
+            date: today(),
+            minutes: completed.plannedMinutes,
+            taskTitle: completed.taskTitle,
+            completedAt: new Date().toISOString(),
+          }),
+        "Focus complete. Take a breath.",
+      );
+    }
+    timer = null;
+    storeTimer();
+    if (route === "focus") render();
+  }
+  if ($("#timer-digits"))
+    $("#timer-digits").textContent = timer
+      ? timerText()
+      : String(focusMinutes).padStart(2, "0") + ":00";
+}
+setInterval(tick, 1000);
+function quickSearch() {
+  const q = $("#global-search").value.trim().toLowerCase(),
+    matches = [
+      ...s.tasks
+        .filter((t) => !t.archived)
+        .map((t) => ({ ...t, type: "task" })),
+      ...s.habits
+        .filter((h) => !h.archived)
+        .map((h) => ({ ...h, type: "habit" })),
+    ]
+      .filter((x) => x.title.toLowerCase().includes(q))
+      .slice(0, 8);
+  $("#quick-results").innerHTML =
+    matches
+      .map(
+        (x) =>
+          `<button data-quick-item="${x.id}" data-type="${x.type}">${icon(x.type === "habit" ? "habits" : "tasks")}<span>${esc(x.title)}<small>${x.type === "habit" ? "Habit" : "Task"} · ${areas[x.area]}</small></span></button>`,
+      )
+      .join("") ||
+    '<p class="help">No matches. Capture a new task or habit above.</p>';
+}
+$("#global-search").oninput = quickSearch;
+function openCommand() {
+  closeHabitWorkspaces();
+  $("#global-search").value = "";
+  quickSearch();
+  $("#command-dialog").showModal();
+  $("#global-search").focus();
+}
+// Habit profiles are optional: legacy data keeps exactly the same targets and XP.
+const habitKinds = {
+  custom: "Custom",
+  reading: "Reading",
+  exercise: "Home exercise",
+  running: "Running / walking",
+  language: "Language learning",
+  hydration: "Hydration",
+  sleep: "Sleep routine",
+  creative: "Creative practice",
+};
+const habitModules = {
+  custom: [],
+  reading: [
+    ["book", "Book / chapter", "text"],
+    ["pages", "Pages read", "number"],
+    ["quote", "A quote worth keeping", "textarea"],
+  ],
+  exercise: [
+    ["exercises", "Exercises · sets × reps × weight", "textarea"],
+    ["minutes", "Duration (minutes)", "number"],
+    ["effort", "Effort · 1–10", "number"],
+  ],
+  running: [
+    ["distance", "Distance (km)", "number"],
+    ["minutes", "Duration (minutes)", "number"],
+    ["route", "Route / terrain", "text"],
+  ],
+  language: [
+    ["lesson", "Language / lesson", "text"],
+    ["words", "Words practiced", "number"],
+    ["practice", "Speaking, listening, reading…", "text"],
+  ],
+  hydration: [["cup", "Usual cup size (ml)", "number"]],
+  sleep: [
+    ["bedtime", "Bedtime", "time"],
+    ["wake", "Wake time", "time"],
+    ["quality", "Rest quality · 1–5", "number"],
+  ],
+  creative: [
+    ["project", "Project / exercise", "text"],
+    ["minutes", "Practice (minutes)", "number"],
+    ["reflection", "What did you discover?", "textarea"],
+  ],
+};
+const habitTemplates = [
+  {
+    title: "Read a little",
+    type: "reading",
+    area: "mind",
+    target: 10,
+    unit: "minutes",
+    icon: "book",
+    cue: "After breakfast",
+    minimum: "Read one page",
+    checklist: ["Choose a book", "Put your phone away"],
+  },
+  {
+    title: "Home strength session",
+    type: "exercise",
+    area: "body",
+    target: 1,
+    unit: "session",
+    icon: "body",
+    frequency: "weekly",
+    weeklyTarget: 3,
+    minimum: "One comfortable set",
+    checklist: ["Warm up", "Follow your planned workout", "Cool down"],
+  },
+  {
+    title: "Practice Russian",
+    type: "language",
+    area: "mind",
+    target: 10,
+    unit: "minutes",
+    icon: "mind",
+    minimum: "Review one word",
+    checklist: ["Review vocabulary", "Practice speaking"],
+  },
+  {
+    title: "Walk outside",
+    type: "running",
+    area: "body",
+    target: 20,
+    unit: "minutes",
+    icon: "body",
+    minimum: "Step outside for two minutes",
+  },
+  {
+    title: "Drink water",
+    type: "hydration",
+    area: "body",
+    target: 2000,
+    unit: "ml",
+    icon: "body",
+    minimum: "One glass",
+    quickAmounts: [250, 500],
+  },
+  {
+    title: "Wind down for sleep",
+    type: "sleep",
+    area: "body",
+    target: 1,
+    unit: "routine",
+    icon: "focus",
+    cue: "30 minutes before bed",
+    checklist: ["Dim the lights", "Put screens away", "Prepare for tomorrow"],
+  },
+  {
+    title: "Draw for 10 minutes",
+    type: "creative",
+    area: "craft",
+    target: 10,
+    unit: "minutes",
+    icon: "craft",
+    minimum: "One small sketch",
+  },
+  {
+    title: "Plan tomorrow",
+    type: "custom",
+    area: "life",
+    target: 1,
+    unit: "check-in",
+    icon: "life",
+    cue: "After dinner",
+    checklist: ["Choose your main priority", "Write one small next step"],
+  },
+];
+function hp(h) {
+  return {
+    type: "custom",
+    why: "",
+    cue: "",
+    minimum: "",
+    minimumTarget: 0,
+    frequency: "scheduled",
+    weeklyTarget: 3,
+    checklist: [],
+    customFields: [],
+    quickAmounts: [1, 5],
+    icon: "",
+    color: "blue",
+    pauseFrom: "",
+    pauseUntil: "",
+    pauses: [],
+    ...(h.profile || {}),
+  };
+}
+function validProfile(p) {
+  if (p === undefined) return true;
+  if (!p || typeof p !== "object" || Array.isArray(p)) return false;
+  const text = (v, n) => typeof v === "string" && v.length <= n;
+  return (
+    (p.pauses === undefined ||
+      (Array.isArray(p.pauses) &&
+        p.pauses.length <= 100 &&
+        p.pauses.every(
+          (r) =>
+            r &&
+            typeof r.from === "string" &&
+            typeof r.until === "string" &&
+            /^\d{4}-\d{2}-\d{2}$/.test(r.from) &&
+            /^\d{4}-\d{2}-\d{2}$/.test(r.until) &&
+            r.from <= r.until,
+        ))) &&
+    Object.hasOwn(habitKinds, p.type) &&
+    text(p.why, 500) &&
+    text(p.cue, 180) &&
+    text(p.minimum, 180) &&
+    Number.isInteger(p.minimumTarget) &&
+    p.minimumTarget >= 0 &&
+    p.minimumTarget <= 100000 &&
+    ["scheduled", "weekly"].includes(p.frequency) &&
+    Number.isInteger(p.weeklyTarget) &&
+    p.weeklyTarget >= 1 &&
+    p.weeklyTarget <= 7 &&
+    Array.isArray(p.checklist) &&
+    p.checklist.length <= 8 &&
+    p.checklist.every((v) => text(v, 100)) &&
+    Array.isArray(p.customFields) &&
+    p.customFields.length <= 4 &&
+    p.customFields.every((v) => text(v, 60)) &&
+    Array.isArray(p.quickAmounts) &&
+    p.quickAmounts.length <= 3 &&
+    p.quickAmounts.every((v) => Number.isInteger(v) && v > 0 && v <= 100000) &&
+    ["", "book", "body", "mind", "focus", "craft", "life", "spark"].includes(
+      p.icon,
+    ) &&
+    ["blue", "green", "amber", "purple"].includes(p.color) &&
+    ((p.pauseFrom === "" && p.pauseUntil === "") ||
+      (/^\d{4}-\d{2}-\d{2}$/.test(p.pauseFrom) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(p.pauseUntil) &&
+        p.pauseFrom <= p.pauseUntil &&
+        [p.pauseFrom, p.pauseUntil].every(
+          (d) =>
+            !isNaN(Date.parse(d)) &&
+            new Date(d + "T12:00:00Z").toISOString().slice(0, 10) === d,
+        )))
+  );
+}
+function validHabitDetail(d) {
+  if (d === undefined) return true;
+  return (
+    d &&
+    typeof d === "object" &&
+    !Array.isArray(d) &&
+    ["", "minimum", "skip", "rest"].includes(d.status) &&
+    typeof d.note === "string" &&
+    d.note.length <= 1000 &&
+    ["", "easy", "okay", "hard"].includes(d.mood) &&
+    Array.isArray(d.checks) &&
+    d.checks.length <= 8 &&
+    d.checks.every((n) => Number.isInteger(n) && n >= 0 && n < 8) &&
+    d.fields &&
+    typeof d.fields === "object" &&
+    !Array.isArray(d.fields) &&
+    Object.keys(d.fields).length <= 32 &&
+    Object.entries(d.fields).every(
+      ([k, v]) =>
+        /^[a-z0-9]+$/i.test(k) && typeof v === "string" && v.length <= 500,
+    )
+  );
+}
+function isHabitPaused(h, d) {
+  const p = hp(h);
+  return (
+    !!(p.pauseFrom && d >= p.pauseFrom && d <= p.pauseUntil) ||
+    p.pauses.some((r) => d >= r.from && d <= r.until)
+  );
+}
+function preservedPauses(h, newUntil) {
+  const p = hp(h || {}),
+    ranges = [...p.pauses];
+  if (p.pauseFrom && p.pauseUntil !== newUntil) {
+    const until = p.pauseUntil < today() ? p.pauseUntil : addDays(today(), -1);
+    if (until >= p.pauseFrom) ranges.push({ from: p.pauseFrom, until });
+  }
+  return ranges.slice(-100);
+}
+function weekStart(d) {
+  return addDays(d, -((weekday(d) + 6) % 7));
+}
+function weekWins(h, d) {
+  let a = weekStart(d),
+    b = addDays(a, 6);
+  return s.habitLogs.filter(
+    (l) =>
+      l.habitId === h.id && l.date >= a && l.date <= b && l.value >= l.target,
+  ).length;
+}
+function weeklyStreak(h, d) {
+  let w = weekStart(d),
+    n = 0;
+  if (weekWins(h, w) < hp(h).weeklyTarget) w = addDays(w, -7);
+  for (
+    let i = 0;
+    i < 522 && addDays(w, 6) >= h.createdOn;
+    i++, w = addDays(w, -7)
+  ) {
+    if (weekWins(h, w) >= hp(h).weeklyTarget) n++;
+    else if (
+      Array.from({ length: 7 }, (_, i) => addDays(w, i)).every((d) =>
+        isHabitPaused(h, d),
+      )
+    )
+      continue;
+    else break;
+  }
+  return n;
+}
+function statusLabel(v) {
+  return (
+    { minimum: "Minimum version", skip: "Skipped", rest: "Rest day" }[v] || v
+  );
+}
+function editableHabitDay(h, d) {
+  return (
+    !h.archived && habitDue(h, d) && d <= today() && d >= addDays(today(), -6)
+  );
+}
+let habitDetailId = null,
+  habitDetailDate = null;
+function populateHabitEditor(item, type) {
+  if (type !== "habit") return;
+  const p = hp(item || {});
+  $("#habit-template").closest("label").classList.toggle("hidden", !!item);
+  $("#habit-template").value = "";
+  for (const k of [
+    "type",
+    "why",
+    "cue",
+    "minimum",
+    "minimumTarget",
+    "frequency",
+    "weeklyTarget",
+    "icon",
+    "color",
+    "pauseUntil",
+  ])
+    $("#habit-" + k).value = p[k];
+  $("#habit-checklist").value = p.checklist.join("\n");
+  $("#habit-customFields").value = p.customFields.join("\n");
+  $("#habit-quickAmounts").value = p.quickAmounts.join(", ");
+  $("#habit-advanced").open = false;
+  updateFrequencyFields();
+}
+function updateFrequencyFields() {
+  const weekly = $("#habit-frequency").value === "weekly";
+  $("#habit-weekly-row").classList.toggle("hidden", !weekly);
+  $("#schedule-picker").parentElement.classList.toggle("hidden", weekly);
+}
+function readHabitProfile() {
+  const old = s.habits.find((h) => h.id === editId),
+    pauseUntil = $("#habit-pauseUntil").value;
+  return {
+    type: $("#habit-type").value,
+    why: $("#habit-why").value.trim(),
+    cue: $("#habit-cue").value.trim(),
+    minimum: $("#habit-minimum").value.trim(),
+    minimumTarget: Number($("#habit-minimumTarget").value),
+    frequency: $("#habit-frequency").value,
+    weeklyTarget: Number($("#habit-weeklyTarget").value),
+    checklist: $("#habit-checklist")
+      .value.split("\n")
+      .map((v) => v.trim())
+      .filter(Boolean),
+    customFields: $("#habit-customFields")
+      .value.split("\n")
+      .map((v) => v.trim())
+      .filter(Boolean),
+    quickAmounts: $("#habit-quickAmounts")
+      .value.split(",")
+      .map((v) => Number(v.trim()))
+      .filter(Boolean),
+    icon: $("#habit-icon").value,
+    color: $("#habit-color").value,
+    pauses: preservedPauses(old, pauseUntil),
+    pauseFrom: pauseUntil
+      ? hp(old || {}).pauseUntil === pauseUntil
+        ? hp(old || {}).pauseFrom
+        : today()
+      : "",
+    pauseUntil,
+  };
+}
+function useHabitTemplate(n) {
+  const t = habitTemplates[n];
+  if (!t) return;
+  $("#habit-templates").close();
+  openEditor("habit");
+  $("#habit-template").value = String(n);
+  $("#item-title").value = t.title;
+  $("#item-target").value = t.target;
+  $("#item-unit").value = t.unit;
+  $("#item-area").value = t.area;
+  const p = hp({ profile: t });
+  for (const k of [
+    "type",
+    "cue",
+    "minimum",
+    "frequency",
+    "weeklyTarget",
+    "icon",
+  ])
+    $("#habit-" + k).value = p[k];
+  $("#habit-checklist").value = p.checklist.join("\n");
+  $("#habit-quickAmounts").value = p.quickAmounts.join(", ");
+  updateFrequencyFields();
+}
+function openTemplates() {
+  closeHabitWorkspaces();
+  const dialog=$("#habit-templates");
+  dialog.querySelector('.modal-head h2').textContent='Find your next ritual.';
+  $("#templates-body").innerHTML = `<p class="template-intro muted">Start with something small. Every template is yours to change.</p><div class="template-grid">${habitTemplates.map((t,i)=>`<button class="template-card" data-habit-template="${i}"><span class="row-icon ${t.area}">${icon(t.icon)}</span><span class="template-category">${esc(habitKinds[t.type]||'Custom')}</span><strong>${esc(t.title)}</strong><span class="help">${t.target} ${esc(t.unit)} · ${t.frequency==='weekly'?t.weeklyTarget+' days / week':'daily'}</span><span class="template-arrow">${icon('arrow')}</span></button>`).join('')}</div><section class="custom-habit-banner"><div><h2>A ritual that’s entirely yours.</h2><p>Choose your own target, schedule, fields, and reason.</p></div><button class="primary" data-custom-habit>${icon('plus')}Create a custom habit</button></section>`;
+  document.body.classList.add('templates-workspace-open');dialog.show();window.scrollTo(0,0);
+}
+function openHabitDetail(hid, d = today()) {
+  const h = s.habits.find((h) => h.id === hid);
+  if (!h) return;
+  habitDetailId = hid;
+  habitDetailDate = d;
+  const p = hp(h),
+    l = hlog(h, d),
+    det = {
+      status: "",
+      note: "",
+      mood: "",
+      checks: [],
+      fields: {},
+      ...(l?.detail || {}),
+    },
+    done = habitDone(h, d),
+    can = editableHabitDay(h, d),
+    logs = s.habitLogs
+      .filter((l) => l.habitId === hid)
+      .sort((a, b) => b.date.localeCompare(a.date)),
+    completed = logs.filter((l) => l.value >= l.target),
+    xp = completed.reduce((n, l) => n + l.xp, 0),
+    mastery = Math.floor(completed.length / 7) + 1,
+    levelProgress = completed.length % 7;
+  let streakBest = 0;
+  for (const l of completed)
+    streakBest = Math.max(streakBest, habitStreak(h, l.date));
+  const weekGroups = {};
+  completed.forEach((l) => {
+    let w = weekStart(l.date);
+    weekGroups[w] = (weekGroups[w] || 0) + 1;
+  });
+  const total = completed.length,
+    days = Array.from({ length: 28 }, (_, i) => addDays(today(), i - 27));
+  $("#habit-detail-title").textContent = h.title;
+  $("#habit-detail-body").innerHTML =
+    `<div class="habit-detail-stack"><div class="habit-topline"><span class="pill">${esc(habitKinds[p.type])}</span><span class="help">${esc(areas[h.area])} · ${XP[h.effort]} XP / completed day</span></div>
+ <div class="habit-detail-stats"><div><strong>${total}</strong><span>completed days</span></div><div><strong>${habitStreak(h)}</strong><span>${p.frequency === "weekly" ? "week" : "day"} streak</span></div><div><strong>${streakBest}</strong><span>best streak</span></div></div>
+ <section class="habit-goal"><div class="toolbar"><strong>${p.frequency === "weekly" ? "This week’s challenge" : "Your next small win"}</strong><span class="pill">${p.frequency === "weekly" ? weekWins(h, d) + " / " + p.weeklyTarget + " days" : (l?.value || 0) + " / " + (l?.target || h.target) + " " + esc(h.unit)}</span></div><div class="habit-mini-bar"><span style="width:${Math.min(100, 100 * (p.frequency === "weekly" ? weekWins(h, d) / p.weeklyTarget : (l?.value || 0) / (l?.target || h.target)))}%"></span></div><p class="help">${p.frequency === "weekly" ? "Complete the daily target on any " + p.weeklyTarget + " days, Monday–Sunday." : "Small effort, repeated. Partial progress stays visible."}</p></section>
+ ${p.why ? `<div><h3>Your reason</h3><p class="habit-copy">${esc(p.why)}</p></div>` : ""}${p.cue ? `<p class="note-box"><strong>Your cue</strong><br>${esc(p.cue)}</p>` : ""}${h.notes ? `<p class="habit-copy muted">${esc(h.notes)}</p>` : ""}
+ <div class="habit-log-heading"><h3>Your check-in</h3><label class="field"><span class="sr-only">Check-in date</span><input id="habit-log-date" type="date" min="${h.createdOn > addDays(today(), -6) ? h.createdOn : addDays(today(), -6)}" max="${today()}" value="${d}"></label></div>
+ ${!can ? `<p class="note-box">${h.archived ? "Archived — restore to log new activity." : p.pauseUntil >= d && p.pauseFrom <= d ? "Paused through " + dateLabel(p.pauseUntil) + ". Resume below to check in." : "This date is not editable. Choose a scheduled day in the last 7 days."}</p>` : ""}
+ <form id="habit-log-form" class="fields"><fieldset ${can ? "" : "disabled"} class="habit-fieldset">
+ <div class="field-row"><label class="field">Progress (${esc(h.unit)})<input id="habit-log-value" type="number" min="0" max="${l?.target || h.target}" step="1" value="${l?.value || 0}" required></label><label class="field">How did it feel?<select id="habit-log-mood"><option value="">Optional</option>${["easy", "okay", "hard"].map((m) => `<option ${det.mood === m ? "selected" : ""}>${m}</option>`).join("")}</select></label></div>
+ <div class="quick-log"><span class="help">Quick add</span>${p.quickAmounts.map((n) => `<button type="button" data-habit-add="${n}">+${n} ${esc(h.unit)}</button>`).join("")}</div>
+ ${p.checklist.length ? `<div class="habit-checklist"><h3>Session checklist</h3>${p.checklist.map((q, i) => `<label class="subtask"><input type="checkbox" name="habit-step" value="${i}" ${det.checks.includes(i) ? "checked" : ""}><span>${esc(q)}</span></label>`).join("")}<p class="help">A guide, not a gate. Save or complete explicitly when you’re ready.</p></div>` : ""}
+ <section class="habit-special"><h3>${esc(habitKinds[p.type])} log</h3>${habitModules[p.type].map(([k, label, type]) => sessionField(k, label, type, det.fields[k] || "")).join("")}${p.customFields.map((label, i) => sessionField("custom" + i, label, "text", det.fields["custom" + i] || "")).join("")}${p.type === "custom" && !p.customFields.length ? '<p class="help">Add your own session fields in Edit → More details.</p>' : ""}${p.type === "reading" ? '<a href="./books.html" target="_blank" rel="noopener">Open your book library ↗</a><p class="help">These reading notes are separate; book progress is not changed automatically.</p>' : ""}${p.type === "running" ? '<p id="habit-pace" class="help"></p>' : ""}</section>
+ <label class="field">Session note<textarea id="habit-log-note" rows="2" maxlength="1000" placeholder="What went well? What would help next time?">${esc(det.note)}</textarea></label>
+ <div class="habit-primary-actions"><button type="submit">Save check-in</button><button type="button" class="primary" data-habit-finish>${done ? "Undo completion" : "Mark complete"}</button></div>
+ ${p.minimum ? `<div class="minimum-box"><strong>On a low-energy day</strong><p>${esc(p.minimum)}</p><button type="button" data-habit-status="minimum">Log minimum version${p.minimumTarget ? " · " + p.minimumTarget + " " + esc(h.unit) : ""}</button><p class="help">Recorded as effort, not a full completion. No full-completion XP.</p></div>` : ""}
+ <div class="compact-actions"><button type="button" class="ghost" data-habit-status="skip">Skip this day</button><button type="button" class="ghost" data-habit-status="rest">Take a rest day</button></div><p class="help">Skip / rest are neutral: no XP and no streak increment.</p>
+ </fieldset><p id="habit-log-error" role="alert" class="danger help"></p></form>
+ <section><div class="toolbar"><h3>Your rhythm</h3><span class="help">Last 28 days</span></div><div class="habit-calendar">${days
+   .map((k) => {
+     let x = hlog(h, k),
+       ok = habitDone(h, k);
+     return `<button class="rhythm-day ${ok ? "complete" : x?.detail?.status ? "neutral" : x?.value ? "partial" : ""}" data-habit-history="${k}" title="${dateLabel(k)} · ${ok ? "Complete" : x?.detail?.status ? statusLabel(x.detail.status) : x?.value ? "Partial" : "No check-in"}" aria-label="${dateLabel(k)} · ${ok ? "Complete" : x?.detail?.status ? statusLabel(x.detail.status) : x?.value ? "Partial" : "No check-in"}">${Number(k.slice(-2))}</button>`;
+   })
+   .join(
+     "",
+   )}</div><p class="help">✓ Complete · ◐ Partial · — Rest / skip. Older check-ins are read-only.</p></section>
+ <section class="habit-mastery"><div class="toolbar"><h3>Habit mastery · ${mastery}</h3><strong>${xp} XP</strong></div><p class="help">${levelProgress} / 7 completed days to the next mastery level. Best week: ${Math.max(0, ...Object.values(weekGroups))} completed days.</p><div class="habit-mini-bar"><span style="width:${(100 * levelProgress) / 7}%"></span></div></section>
+ <section><h3>Recent check-ins</h3>${
+   logs.length
+     ? `<div class="habit-history">${logs
+         .slice(0, 12)
+         .map(
+           (x) =>
+             `<div><div class="toolbar"><strong>${dateLabel(x.date)}</strong><span class="help">${x.value >= x.target ? "✓ Complete · +" + x.xp + " XP" : x.detail?.status ? esc(statusLabel(x.detail.status)) : x.value + "/" + x.target + " " + esc(h.unit)}</span></div>${x.detail?.note ? `<p class="habit-copy">${esc(x.detail.note)}</p>` : ""}${
+               x.detail?.fields
+                 ? `<p class="help habit-copy">${Object.entries(x.detail.fields)
+                     .filter(([k, v]) => v)
+                     .map(([k, v]) =>
+                       esc(
+                         (habitModules[p.type].find((f) => f[0] === k)?.[1] ||
+                           p.customFields[Number(k.replace("custom", ""))] ||
+                           k) +
+                           ": " +
+                           v,
+                       ),
+                     )
+                     .join(" · ")}</p>`
+                 : ""
+             }</div>`,
+         )
+         .join("")}</div>`
+     : '<p class="help">Your story starts with a small action. No progress is invented here.</p>'
+ }</section>
+ <div class="habit-admin"><button data-habit-edit="${hid}">${icon("edit")}Edit habit</button><button data-habit-duplicate="${hid}">Duplicate</button>${p.pauseUntil >= today() ? "<button data-habit-resume>Resume habit</button>" : "<button data-habit-pause>Pause 7 days</button>"}<button data-habit-reorder="-1" aria-label="Move habit up">↑ Move up</button><button data-habit-reorder="1" aria-label="Move habit down">↓ Move down</button></div><p class="help">Pausing keeps your history. Minimum versions and skipped days never award completion XP.</p></div>`;
+  decorateHabitWorkspace(h,d);
+  if (!$("#habit-detail").open) $("#habit-detail").show();
+  updatePace();
+}
+function sessionField(k, label, type, v) {
+  return `<label class="field">${esc(label)}${type === "textarea" ? `<textarea data-session-field="${k}" maxlength="500" rows="2">${esc(v)}</textarea>` : `<input data-session-field="${k}" type="${type}" ${type === "number" ? 'min="0" max="100000" step="any"' : ""} ${type === "text" ? 'maxlength="500"' : ""} value="${esc(v)}">`}</label>`;
+}
+function updatePace() {
+  const out = $("#habit-pace");
+  if (!out) return;
+  const km = Number($('[data-session-field="distance"]')?.value),
+    min = Number($('[data-session-field="minutes"]')?.value);
+  if (km > 0 && min > 0) {
+    let sec = Math.round((60 * min) / km);
+    out.textContent = `Pace: ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")} / km`;
+  } else
+    out.textContent = "Enter distance and duration to calculate your pace.";
+}
+function saveHabitSession(action = "save") {
+  const h = s.habits.find((h) => h.id === habitDetailId),
+    d = habitDetailDate;
+  if (!h || !editableHabitDay(h, d)) return;
+  const p = hp(h),
+    old = hlog(h, d),
+    target = old?.target || h.target,
+    form = $("#habit-log-form");
+  if (!form.reportValidity()) return;
+  let value = Number($("#habit-log-value").value),
+    status = ["minimum", "skip", "rest"].includes(action) ? action : "";
+  if (action === "complete") value = habitDone(h, d) ? 0 : target;
+  if (action === "minimum") value = Math.min(target - 1, p.minimumTarget || 0);
+  if (action === "skip" || action === "rest") value = 0;
+  if (!Number.isInteger(value) || value < 0 || value > target) {
+    $("#habit-log-error").textContent =
+      "Use whole-number progress within your target.";
+    return;
+  }
+  const fields = Object.fromEntries(
+    $$("[data-session-field]").map((e) => [
+      e.dataset.sessionField,
+      e.value.trim(),
+    ]),
+  );
+  for (const [key, max] of [
+    ["effort", 10],
+    ["quality", 5],
+  ])
+    if (fields[key] && (+fields[key] < 1 || +fields[key] > max)) {
+      $("#habit-log-error").textContent =
+        `Use a value from 1 to ${max} for ${key}.`;
+      return;
+    }
+  const detail = {
+    status,
+    note: $("#habit-log-note").value.trim(),
+    mood: $("#habit-log-mood").value,
+    checks: $$('[name="habit-step"]:checked').map((e) => Number(e.value)),
+    fields: { ...(old?.detail?.fields || {}), ...fields },
+  };
+  if (!validHabitDetail(detail)) {
+    $("#habit-log-error").textContent = "Please shorten the session fields.";
+    return;
+  }
+  mutation(() => {
+    let l = hlog(h, d);
+    if (!l) {
+      l = {
+        id: h.id + "|" + d,
+        habitId: h.id,
+        date: d,
+        value: 0,
+        target,
+        xp: XP[h.effort],
+        area: h.area,
+      };
+      s.habitLogs.push(l);
+    }
+    l.value = value;
+    l.detail = detail;
+  }, "Habit check-in saved");
+  openHabitDetail(h.id, d);
+}
+let habitWorkspaceTab = 'log';
+function closeHabitWorkspaces(){
+  for(const id of ['habit-detail','habit-templates']){const e=$('#'+id);if(e?.open)e.close();}
+  document.body.classList.remove('habit-workspace-open','templates-workspace-open');
+}
+function setHabitTab(tab){
+  habitWorkspaceTab=tab;
+  $$('#habit-detail [data-workspace-tab]').forEach(b=>{const on=b.dataset.workspaceTab===tab;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;});
+  $$('#habit-detail [data-workspace-pane]').forEach(p=>p.hidden=p.dataset.workspacePane!==tab);
+}
+function decorateHabitWorkspace(h,d){
+  const dialog=$('#habit-detail'),body=$('#habit-detail-body'),stack=body.firstElementChild,
+    p=hp(h),l=hlog(h,d),done=habitDone(h,d),can=editableHabitDay(h,d),target=l?.target||h.target,
+    head=dialog.querySelector('.modal-head'),wasOpen=dialog.open;
+  if(!wasOpen){habitWorkspaceTab='log';window.scrollTo(0,0);}
+  document.body.classList.add('habit-workspace-open');
+  document.body.classList.remove('templates-workspace-open');
+  head.innerHTML=`<button class="link-btn workspace-back" data-close="habit-detail">${icon('left')}<span>All habits</span></button><div class="habit-identity"><span class="habit-identity-icon row-icon accent-${p.color}">${icon(p.icon||h.area)}</span><div class="habit-identity-copy"><h1 id="habit-detail-title">${esc(h.title)}</h1><p>${esc(areas[h.area])} · ${p.frequency==='weekly'?p.weeklyTarget+' days a week':schedule(h,d).length===7?'Every day':'Scheduled days'} · ${target} ${esc(h.unit)}</p><span class="pill ${done?'completed-pill':''}">${done?'✓ Completed '+(d===today()?'today':dateLabel(d)):l?.detail?.status?esc(statusLabel(l.detail.status)):l?.value?'In progress':'Ready when you are'}</span></div><button class="habit-edit-button" aria-label="Edit habit" data-habit-edit="${h.id}">${icon('edit')}<span>Edit habit</span></button></div>`;
+  const mobileProgress=document.createElement('div');mobileProgress.className='mobile-habit-progress '+(done?'is-complete':'');mobileProgress.innerHTML=`<strong>${l?.value||0} / ${target} <span>${esc(h.unit)}</span></strong><div class="bar"><span style="width:${Math.min(100,100*(l?.value||0)/target)}%"></span></div>`;head.querySelector('.habit-identity-copy').append(mobileProgress);
+  const children=[...stack.children],form=stack.querySelector('#habit-log-form'),date=stack.querySelector('.habit-log-heading'),goal=stack.querySelector('.habit-goal'),stats=stack.querySelector('.habit-detail-stats'),admin=stack.querySelector('.habit-admin');
+  const layout=document.createElement('div');layout.className='habit-workspace-layout';
+  const main=document.createElement('section');main.className='panel workspace-main';
+  main.innerHTML=`<div class="workspace-tabs" role="tablist" aria-label="Habit workspace">${[['overview','Overview'],['log','Log session'],['history','History']].map(([k,v])=>`<button id="habit-tab-${k}" data-workspace-tab="${k}" role="tab" aria-controls="habit-pane-${k}">${v}</button>`).join('')}</div>${['overview','log','history'].map(k=>`<div id="habit-pane-${k}" class="workspace-pane" data-workspace-pane="${k}" role="tabpanel" aria-labelledby="habit-tab-${k}"></div>`).join('')}`;
+  const log=main.querySelector('[data-workspace-pane="log"]'),overview=main.querySelector('[data-workspace-pane="overview"]'),history=main.querySelector('[data-workspace-pane="history"]');
+  log.innerHTML=`<div class="workspace-intro"><h2>${done?'A little win, worth keeping.':'A little about this session.'}</h2><p>${done?'You made room for yourself. That counts.':'Notes are optional. Your progress is what matters.'}</p></div>`;
+  date.querySelector('h3').textContent='Your check-in';log.append(date);
+  const warning=children.find(n=>n.classList.contains('note-box')&&!n.textContent.includes('Your cue'));if(warning)log.append(warning);
+  log.append(form);
+  // Keep the everyday log short; advanced fields and recovery actions remain one click away.
+  const special=form.querySelector('.habit-special');
+  if(special){
+    const fields=[...special.querySelectorAll(':scope > .field')];
+    if(fields.length>1){const more=document.createElement('details');more.className='session-more';more.innerHTML='<summary>More session details</summary><div class="fields"></div>';fields.slice(1).forEach(n=>more.lastElementChild.append(n));special.append(more);}
+  }
+  const low=form.querySelector('.minimum-box'),neutral=form.querySelector('.compact-actions');
+  if(low||neutral){const more=document.createElement('details');more.className='session-more';more.innerHTML='<summary>Low-energy day or taking a break?</summary><div class="fields"></div>';if(low)more.lastElementChild.append(low);if(neutral){const tip=neutral.nextElementSibling;more.lastElementChild.append(neutral);if(tip?.classList.contains('help'))more.lastElementChild.append(tip);}form.querySelector('fieldset').append(more);}
+  const primary=form.querySelector('.habit-primary-actions');primary.querySelector('button[type="submit"]').textContent='Save check-in';
+  // Keep the real completion/undo behavior and read-only rules in the new sticky footer.
+  primary.querySelectorAll('button').forEach(b=>b.disabled=!can);
+  form.append(primary);
+  overview.innerHTML='<h2>A ritual that fits your life.</h2><p class="muted">Your purpose, your pace. Adjust your routine without losing its story.</p>';
+  overview.append(stats);
+  const top=children.find(n=>n.classList.contains('habit-topline'));if(top)overview.append(top);
+  for(const n of children){
+    if(n===form||n===date||n===goal||n===stats||n===admin||n===top||n===warning)continue;
+    if(n.tagName==='SECTION')history.append(n);else overview.append(n);
+  }
+  overview.append(admin);
+  const rail=document.createElement('aside');rail.className='habit-context';
+  rail.innerHTML=`<section class="panel habit-today ${done?'is-complete':''}"><h2>${d===today()?'Today’s':dateLabel(d)} progress</h2><p>Your target is ${target} ${esc(h.unit)}.</p><strong>${l?.value||0} / ${target}</strong><span class="muted">${esc(h.unit)}</span><div class="bar" role="progressbar" aria-label="Habit progress" aria-valuenow="${l?.value||0}" aria-valuemin="0" aria-valuemax="${target}"><span style="width:${Math.min(100,100*(l?.value||0)/target)}%"></span></div>${p.cue?`<div class="context-cue"><small>Your cue</small><p>${esc(p.cue)}</p></div>`:''}</section>`;
+  if(p.frequency==='weekly')rail.append(goal);
+  if(p.why||p.minimum){const reason=document.createElement('section');reason.className='context-reason';reason.innerHTML=`${p.why?`<h3>Why this matters</h3><p>${esc(p.why)}</p>`:''}${p.minimum?`<h3>On a low-energy day</h3><p>${esc(p.minimum)}</p><small>Keep the connection. Minimum entries earn no completion XP.</small>`:''}`;rail.append(reason);}
+  layout.append(main,rail);body.replaceChildren(layout);setHabitTab(habitWorkspaceTab);
+  if(!wasOpen)requestAnimationFrame(()=>{head.querySelector('h1').tabIndex=-1;head.querySelector('h1').focus({preventScroll:true});});
+}
+// The workspace lives inside the app shell, so navigation stays usable on both sizes.
+for(const id of ['habit-detail','habit-templates']){
+  const d=$('#'+id);$('.shell').append(d);
+  d.addEventListener('close',()=>{document.body.classList.remove(id==='habit-detail'?'habit-workspace-open':'templates-workspace-open');});
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b||!ready)return;
+  if(b.dataset.workspaceTab){setHabitTab(b.dataset.workspaceTab);}
+  if(b.dataset.ritualFilter){ritualFilter=b.dataset.ritualFilter;render();}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&($('#habit-detail').open||$('#habit-templates').open)&&!$('#editor').open&&!$('#command-dialog').open){closeHabitWorkspaces();}
+  const tab=e.target.closest('[data-workspace-tab]');if(tab&&['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const tabs=$$('#habit-detail [data-workspace-tab]');let i=tabs.indexOf(tab);i=e.key==='Home'?0:e.key==='End'?2:(i+(e.key==='ArrowRight'?1:2))%3;setHabitTab(tabs[i].dataset.workspaceTab);tabs[i].focus();}
+});
+
+function installHabitEditor() {
+  const field = document.createElement("div");
+  field.className = "fields";
+  field.innerHTML = `<label class="field" id="habit-template-row">Start from a template<select id="habit-template"><option value="">Blank habit</option>${habitTemplates.map((t, i) => `<option value="${i}">${esc(t.title)}</option>`).join("")}</select></label><label class="field">Habit type<select id="habit-type">${Object.entries(
+    habitKinds,
+  )
+    .map(([k, v]) => `<option value="${k}">${v}</option>`)
+    .join(
+      "",
+    )}</select></label><label class="field">Goal schedule<select id="habit-frequency"><option value="scheduled">Specific days</option><option value="weekly">Any days · weekly goal</option></select></label><label class="field hidden" id="habit-weekly-row">Completed days per week<input id="habit-weeklyTarget" type="number" min="1" max="7" value="3"></label>`;
+  $("#habit-fields").prepend(field);
+  $("#item-target").max = "100000";
+  $("#item-target").closest("label").firstChild.textContent = "Target per day";
+  const adv = document.createElement("details");
+  adv.id = "habit-advanced";
+  adv.className = "habit-advanced";
+  adv.innerHTML = `<summary>More details · make it personal</summary><div class="fields"><label class="field">Why it matters<textarea id="habit-why" maxlength="500" rows="2" placeholder="The person you want to become…"></textarea></label><label class="field">Cue / when<input id="habit-cue" maxlength="180" placeholder="After breakfast…"></label><label class="field">Minimum version<input id="habit-minimum" maxlength="180" placeholder="On a difficult day, just…"></label><label class="field">Minimum progress (optional)<input id="habit-minimumTarget" type="number" min="0" max="100000" value="0"></label><label class="field">Session checklist · up to 8 steps<textarea id="habit-checklist" rows="3" maxlength="900" placeholder="One step per line"></textarea></label><label class="field">Custom session fields · up to 4<textarea id="habit-customFields" rows="2" maxlength="250" placeholder="One field label per line"></textarea></label><label class="field">Quick-add amounts<input id="habit-quickAmounts" value="1, 5" maxlength="30" placeholder="250, 500"></label><div class="field-row"><label class="field">Icon<select id="habit-icon">${["", "book", "body", "mind", "focus", "craft", "life", "spark"].map((k) => `<option value="${k}">${k || "Use area icon"}</option>`).join("")}</select></label><label class="field">Accent<select id="habit-color">${["blue", "green", "amber", "purple"].map((k) => `<option>${k}</option>`).join("")}</select></label></div><label class="field">Pause through (optional)<input id="habit-pauseUntil" type="date" min="${today()}"></label><p class="help">Pausing suspends check-ins, never deletes your history. Clear the date to resume.</p></div>`;
+  $("#habit-fields").append(adv);
+}
+installHabitEditor();
+document.addEventListener("change", (e) => {
+  if (e.target.id === "habit-frequency") updateFrequencyFields();
+  if (e.target.id === "habit-template" && e.target.value !== "")
+    useHabitTemplate(Number(e.target.value));
+  if (e.target.id === "habit-log-date" && e.target.value)
+    openHabitDetail(habitDetailId, e.target.value);
+});
+document.addEventListener("input", (e) => {
+  if (e.target.dataset.sessionField) updatePace();
+});
+document.addEventListener("submit", (e) => {
+  if (e.target.id === "habit-log-form") {
+    e.preventDefault();
+    saveHabitSession();
+  }
+});
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b || !ready) return;
+  const d = b.dataset;
+  if (d.action === "habit-templates") openTemplates();
+  if (d.habitTemplate !== undefined) useHabitTemplate(Number(d.habitTemplate));
+  if (d.customHabit !== undefined) {
+    $("#habit-templates").close();
+    openEditor("habit");
+  }
+  if (d.habitEdit) {
+    $("#habit-detail").close();
+    openEditor("habit", d.habitEdit);
+  }
+  if (d.habitAdd) {
+    const input = $("#habit-log-value");
+    input.value = Math.min(
+      Number(input.max),
+      Number(input.value) + Number(d.habitAdd),
+    );
+  }
+  if (d.habitFinish !== undefined) saveHabitSession("complete");
+  if (d.habitStatus) saveHabitSession(d.habitStatus);
+  if (d.habitHistory) {
+    openHabitDetail(habitDetailId, d.habitHistory);
+  }
+  if (d.habitDuplicate) {
+    const source = s.habits.find((h) => h.id === d.habitDuplicate);
+    if (!source) return;
+    $("#habit-detail").close();
+    openEditor("habit", source.id);
+    editId = null;
+    $("#editor-title").textContent = "Duplicate habit";
+    $("#item-title").value = source.title + " (copy)";
+    $("#habit-pauseUntil").value = "";
+    $("#archive-item").classList.add("hidden");
+  }
+  if (d.habitPause !== undefined || d.habitResume !== undefined) {
+    const h = s.habits.find((h) => h.id === habitDetailId);
+    if (!h) return;
+    mutation(
+      () => {
+        const until = d.habitResume !== undefined ? "" : addDays(today(), 6);
+        h.profile = {
+          ...hp(h),
+          pauses: preservedPauses(h, until),
+          pauseFrom: until ? today() : "",
+          pauseUntil: until,
+        };
+      },
+      d.habitResume !== undefined ? "Habit resumed" : "Paused for 7 days",
+    );
+    openHabitDetail(h.id, habitDetailDate);
+  }
+  if (d.habitReorder) {
+    let index = s.habits.findIndex((h) => h.id === habitDetailId),
+      next = index + Number(d.habitReorder);
+    if (next >= 0 && next < s.habits.length)
+      mutation(() => {
+        [s.habits[index], s.habits[next]] = [s.habits[next], s.habits[index]];
+      }, "Habit order updated");
+  }
+});
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  const d = b.dataset;
+  if (d.close) {
+    $("#" + d.close).close();
+    return;
+  }
+  if (!ready) return;
+  if (d.route) {
+    go(d.route);
+    return;
+  }
+  if (d.editorType) {
+    openEditor(d.editorType);
+    return;
+  }
+  if (d.editHabit) {
+    openEditor("habit", d.editHabit);
+    return;
+  }
+  if (d.editTask) {
+    $("#detail").close();
+    openEditor("task", d.editTask);
+    return;
+  }
+  if (d.habitDetail) {
+    openHabitDetail(d.habitDetail, d.date || today());
+    return;
+  }
+  if (d.habitCheck) {
+    updateHabit(d.habitCheck, d.date);
+    return;
+  }
+  if (d.habitStep) {
+    const h = s.habits.find((h) => h.id === d.habitStep);
+    updateHabit(
+      d.habitStep,
+      d.date,
+      (hlog(h, d.date)?.value || 0) + Number(d.step),
+    );
+    return;
+  }
+  if (d.taskCheck) {
+    toggleTask(d.taskCheck);
+    return;
+  }
+  if (d.taskDetail) {
+    openDetail(d.taskDetail);
+    return;
+  }
+  if (d.selectDate) {
+    selectedDate = d.selectDate;
+    render();
+    return;
+  }
+  if (d.taskFilter) {
+    taskFilter = d.taskFilter;
+    render();
+    return;
+  }
+  if (d.taskView) {
+    taskView = d.taskView;
+    if (taskView === "board" && taskFilter === "open") taskFilter = "all";
+    render();
+    return;
+  }
+  if (d.duration) {
+    focusMinutes = Number(d.duration);
+    render();
+    return;
+  }
+  if (d.quickItem) {
+    $("#command-dialog").close();
+    d.type === "habit"
+      ? openHabitDetail(d.quickItem, today())
+      : openDetail(d.quickItem);
+    return;
+  }
+  if (d.redeem) {
+    const r = s.rewards.find((r) => r.id === d.redeem);
+    if (!r || game().coins < r.cost) return;
+    if (confirm(`Spend ${r.cost} virtual coins on “${r.title}”?`))
+      mutation(
+        () =>
+          s.redemptions.push({
+            id: id(),
+            title: r.title,
+            cost: r.cost,
+            date: today(),
+          }),
+        "Reward claimed. Enjoy your moment.",
+      );
+    return;
+  }
+  if (d.deleteReward) {
+    if (confirm("Remove this reward? Past claims will stay in your history."))
+      mutation(
+        () => (s.rewards.find((r) => r.id === d.deleteReward).archived = true),
+        "Reward removed",
+      );
+    return;
+  }
+  switch (d.action) {
+    case "new-task":
+      openEditor("task");
+      break;
+    case "new-habit":
+      openEditor("habit");
+      break;
+    case "command":
+      openCommand();
+      break;
+    case "quick-task":
+      $("#command-dialog").close();
+      openEditor("task");
+      break;
+    case "quick-habit":
+      $("#command-dialog").close();
+      openEditor("habit");
+      break;
+    case "active-habits":
+      showArchived = false;
+      render();
+      break;
+    case "archived-habits":
+      showArchived = true;
+      render();
+      break;
+    case "new-reward":
+      $("#reward-form").reset();
+      $("#reward-dialog").showModal();
+      break;
+    case "export":
+      exportBackup();
+      break;
+    case "import":
+      $("#import-file").click();
+      break;
+    case "timer-toggle":
+      startPause();
+      break;
+    case "timer-reset":
+      if (confirm("End this session? Unfinished sessions earn no XP.")) {
+        timer = null;
+        storeTimer();
+        render();
+      }
+      break;
+    case "signout":
+      if (
+        (pending || busy) &&
+        !confirm(
+          "Some changes are not synced. Export a backup first. Sign out anyway?",
+        )
+      )
+        return;
+      for (const dialog of $$("dialog[open]")) dialog.close();
+      await signOut(auth);
+      break;
+  }
+});
+document.addEventListener("input", (e) => {
+  if (e.target.id === "task-search") {
+    const pos = e.target.selectionStart;
+    taskSearch = e.target.value;
+    render();
+    $("#task-search")?.focus();
+    $("#task-search")?.setSelectionRange(pos, pos);
+  }
+});
+document.addEventListener("change", (e) => {
+  if (e.target.id === "task-area") {
+    taskArea = e.target.value;
+    render();
+  }
+  if (e.target.dataset.subtask) {
+    const t = s.tasks.find((t) => t.id === e.target.dataset.task);
+    if (!t || t.archived) return;
+    if (t.repeat !== "none" && !taskDue(t)) {
+      toast("This task is not scheduled today.");
+      openDetail(t.id);
+      return;
+    }
+    mutation(() => {
+      const l = ensureTaskLog(t);
+      if (e.target.checked)
+        l.steps = [...new Set([...l.steps, e.target.dataset.subtask])];
+      else l.steps = l.steps.filter((x) => x !== e.target.dataset.subtask);
+      l.done =
+        t.subtasks.length > 0 &&
+        t.subtasks.every((x) => l.steps.includes(x.id));
+      l.doneOn = l.done ? today() : "";
+    }, "Checklist updated");
+    openDetail(t.id);
+  }
+});
+document.addEventListener("submit", (e) => {
+  if (e.target.id === "settings-form") {
+    e.preventDefault();
+    const form = new FormData(e.target),
+      zone = form.get("zone").trim();
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: zone }).format();
+    } catch {
+      toast("Use a valid time zone, such as America/Sao_Paulo.");
+      return;
+    }
+    mutation(() => {
+      s.settings = {
+        name: form.get("name").trim(),
+        dailyGoal: Number(form.get("goal")),
+        theme: form.get("theme"),
+        timeZone: zone,
+      };
+    }, "Preferences saved");
+  }
+});
+$("#reward-form").onsubmit = (e) => {
+  e.preventDefault();
+  const title = $("#reward-name").value.trim(),
+    cost = Number($("#reward-cost").value);
+  if (!title) return;
+  mutation(
+    () => s.rewards.push({ id: id(), title, cost, archived: false }),
+    "A little motivation added",
+  );
+  $("#reward-dialog").close();
+};
+for (const d of $$("dialog")) d.addEventListener("close", acceptDeferred);
+document.addEventListener("keydown", (e) => {
+  if (!ready) return;
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    openCommand();
+  } else if (
+    e.key.toLowerCase() === "n" &&
+    !e.metaKey &&
+    !e.ctrlKey &&
+    !hasDialog() &&
+    !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)
+  ) {
+    e.preventDefault();
+    openEditor("task");
+  }
+});
+window.addEventListener("hashchange", () => {
+  const r = location.hash.slice(1);
+  if (Object.hasOwn(routes, r) && route !== r) {
+    closeHabitWorkspaces();
+    route = r;
+    render();
+  }
+});
+$("#sync-retry").onclick = async () => {
+  if (!ready) {
+    if (auth.currentUser) handleUser(auth.currentUser);
+    return;
+  }
+  if (conflict) {
+    if (
+      !confirm(
+        "Another device has newer cloud progress. Replace it with this device’s current progress? Cancel keeps both copies unchanged. Export a backup first if unsure.",
+      )
+    )
+      return;
+    try {
+      const latest = await getDocFromServer(ref);
+      localStorage.setItem(
+        "folio-quest-before-conflict-v2",
+        JSON.stringify(latest.data()),
+      );
+      revision = latest.data().revision;
+      pendingBase = revision;
+      conflict = false;
+      saveDraft();
+    } catch {
+      toast("Unable to read cloud data. Please try again.");
+      return;
+    }
+  }
+  flush();
+};
+$("#signin").onclick = async () => {
+  try {
+    $("#signin").disabled = true;
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    $("#signin").disabled = false;
+    $("#signin").textContent = "Continue with Google";
+    $("#auth-message").textContent =
+      error.code === "auth/popup-blocked"
+        ? "Allow pop-ups for this site, then try again."
+        : error.code === "auth/popup-closed-by-user"
+          ? "Sign-in was cancelled. Your space will be here."
+          : "Unable to finish sign-in. Please try again.";
+  }
+};
+async function handleUser(user) {
+  closeHabitWorkspaces();
+  const e = ++epoch;
+  if (unsub) {
+    unsub();
+    unsub = null;
+  }
+  ready = false;
+  busy = false;
+  pending = null;
+  deferred = null;
+  conflict = false;
+  ref = null;
+  $("#app").hidden = true;
+  $("#auth-screen").hidden = false;
+  $("#cloud-notice").classList.add("hidden");
+  activeUID = user?.uid || null;
+  if (!user) {
+    s = null;
+    $("#signin").disabled = false;
+    $("#signin").textContent = "Continue with Google";
+    $("#auth-message").textContent =
+      "Your approved Google account is the only account with access.";
+    applyTheme();
+    return;
+  }
+  profileName = (user.displayName || "You").split(" ")[0];
+  $("#signin").disabled = true;
+  $("#signin").textContent = "Opening your space…";
+  $("#auth-message").textContent = "Checking your private cloud access…";
+  try {
+    ref = doc(db, "users", user.uid, "tracker", "state");
+    const target = ref;
+    const snap = await getDocFromServer(target);
+    if (e !== epoch) return;
+    if (!snap.exists()) {
+      let initial = seed();
+      try {
+        let cached = JSON.parse(localStorage.getItem(KEY) || "null");
+        if (cached?.uid === user.uid && valid(cached.state))
+          initial = pure(cached.state);
+      } catch {}
+      await runTransaction(db, async (tx) => {
+        const check = await tx.get(target);
+        if (!check.exists()) tx.set(target, pack(initial, 1));
+      });
+    }
+    const latest = await getDocFromServer(target);
+    if (e !== epoch) return;
+    applyRemote(latest.data());
+    ready = true;
+    let draft = null;
+    try {
+      draft = JSON.parse(localStorage.getItem(DRAFT) || "null");
+    } catch {}
+    if (
+      draft?.uid === user.uid &&
+      valid(draft.state) &&
+      Number.isInteger(draft.base)
+    ) {
+      s = pure(draft.state);
+      pending = clone(s);
+      pendingBase = draft.base;
+      conflict = pendingBase !== revision;
+      remember();
+      render();
+      if (conflict) {
+        setSync("Not synced", "error");
+        notice(
+          "Recovered unsynced changes from this device. The cloud library is newer. Export a backup, then choose Retry sync to resolve.",
+        );
+      } else flush();
+    }
+    $("#auth-screen").hidden = true;
+    $("#app").hidden = false;
+    unsub = onSnapshot(
+      target,
+      { includeMetadataChanges: true },
+      (snap) => {
+        if (
+          e !== epoch ||
+          !snap.exists() ||
+          snap.metadata.hasPendingWrites ||
+          snap.metadata.fromCache
+        )
+          return;
+        try {
+          const data = snap.data();
+          if (!remoteValid(data)) throw Error();
+          if (data.revision <= revision) return;
+          if (busy || pending || hasDialog()) deferred = data;
+          else applyRemote(data);
+        } catch {
+          setSync("Sync needs attention", "error");
+          notice(
+            "Cloud data could not be loaded. Your device copy is preserved. Export a backup in Settings.",
+            false,
+          );
+        }
+      },
+      () => {
+        setSync("Connection interrupted", "error");
+        notice(
+          "Live updates are unavailable. Reconnect or sign in again; local edits remain saved.",
+        );
+      },
+    );
+    if (timer && timer.uid !== activeUID) {
+      timer = null;
+      storeTimer();
+    }
+    tick();
+  } catch (error) {
+    if (e !== epoch) return;
+    $("#signin").disabled = false;
+    $("#signin").textContent = "Try Google sign-in again";
+    $("#auth-message").textContent =
+      error.code === "permission-denied"
+        ? "This Google account is not authorized. Use the project owner’s approved account."
+        : "Unable to open your cloud workspace. Check your internet connection and try again. Existing books and progress have not been removed.";
+  }
+}
+onAuthStateChanged(auth, handleUser);
+window.addEventListener("online", () => {
+  if (ready) flush();
+});
+window.addEventListener("offline", () => {
+  if (ready) {
+    setSync("Offline · saved here", "error");
+    notice(
+      "Offline. New changes will be saved on this device until you reconnect.",
+      false,
+    );
+  }
+});
+window.addEventListener("beforeunload", (e) => {
+  if (pending || busy) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+setInterval(() => {
+  if (ready && today() !== render.lastDay) {
+    render.lastDay = today();
+    selectedDate = today();
+    render();
+  }
+}, 30000);
+
+let draggingHabit = null;
+document.addEventListener("dragstart", (e) => {
+  const row = e.target.closest("[data-habit-drag]");
+  if (!row) return;
+  draggingHabit = row.dataset.habitDrag;
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", draggingHabit);
+});
+document.addEventListener("dragover", (e) => {
+  if (draggingHabit && e.target.closest("[data-habit-drag]")) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }
+});
+document.addEventListener("drop", (e) => {
+  const row = e.target.closest("[data-habit-drag]");
+  if (!row || !draggingHabit) return;
+  e.preventDefault();
+  const a = s.habits.findIndex((h) => h.id === draggingHabit),
+    b = s.habits.findIndex((h) => h.id === row.dataset.habitDrag);
+  draggingHabit = null;
+  if (a >= 0 && b >= 0 && a !== b)
+    mutation(() => {
+      const [h] = s.habits.splice(a, 1);
+      s.habits.splice(b, 0, h);
+    }, "Habit order updated");
+});
+document.addEventListener("dragend", () => (draggingHabit = null));
+document.addEventListener("click", (e) => {
+  if (e.target.closest("button,a,input,select,textarea")) return;
+  const row = e.target.closest("[data-habit-row]");
+  if (row && ready) openHabitDetail(row.dataset.habitRow, row.dataset.date);
+});
