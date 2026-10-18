@@ -1,25 +1,39 @@
-# Folio — Your reading life
+# Folio — Everyday, upgraded
 
-A responsive personal book tracker, hosted on GitHub Pages with Google Firebase Authentication and Cloud Firestore.
+Private, single-player habit + task tracker with a gentle progression game. Responsive desktop sidebar and mobile bottom navigation. Google sign-in and Cloud Firestore; no build step.
 
-## Files
-- `index.html`: interface, local backup functions, embedded sample covers
-- `cloud.js`: Google sign-in, realtime cloud sync, and revision-checked writes
+## Shipped features
+- **Habits:** custom schedules, scheduled-day streaks, numeric targets with +/- logging, last-six-day backfill, archive/restore, historical schedule changes.
+- **Tasks:** priorities, due dates, categories, notes, checklists, daily/weekly recurrence, list and three-column board views, search and filters, archive/restore.
+- **Game:** 10/20/40 XP by effort, rising level thresholds, daily side quests, achievements, virtual reward shop, activity history. Missed days do not remove XP.
+- **Focus:** 25/45/60-minute sessions, pause/resume, optional task association, timer recovery on this device. Earn 20 XP for each of the first four completed sessions per day. Unfinished sessions earn nothing.
+- **Personalization:** light/dark/system appearance, display name, daily XP goal, time zone.
+- **Recovery:** JSON export/import, local recovery copies, pending-write restoration, realtime updates, revision-checked transactions, explicit conflict resolution.
+- **Quick capture:** Ctrl/Command K search; N opens a task editor.
 
-## Privacy and storage
-Google sign-in is required to display the library. Firestore rules restrict access to the project's single approved, verified Google owner. Other accounts cannot read or write library data. The Firebase client config is public by design; it does not grant database access.
+## Game rules
+Each habit/date and task occurrence has one completion record. Toggling a completion does not stack XP; undo removes the associated XP and any resulting daily quest bonus. Effort/target values are recorded with the first check-in. Archived items retain their recorded history.
 
-Books, reading progress, notes, ratings, and the reading goal are stored at `users/{uid}/library/state`. Source code and example covers are public; personal books are not committed to this repository. Browser-local copies and pending edits support recovery; export JSON for an extra backup. Sign out and clear site data on shared computers after exporting any unsynced changes.
+Daily quest bonuses: complete 3 habits (+20 XP), complete a task (+15 XP), finish a focus session (+15 XP). Each is counted at most once per calendar day. Level L starts at `50 × (L−1) × L` XP. Coins earned = floor(total XP / 10); claimed reward costs are subtracted. Undo after spending can create a negative coin balance; further earnings cover it before another reward can be claimed.
 
-On first sign-in, an existing library from this browser is uploaded only if there is no cloud library. Otherwise, the cloud library loads. Existing pending changes from this account are restored separately. Concurrent edits are checked using revisions; conflicts require explicit confirmation before replacing cloud data. The app does not silently overwrite newer revisions.
+Achievements reflect recorded history; they are not permanent unlocks if the qualifying actions are undone. This is a personal, client-calculated game—not a tamper-proof competition, financial system, or public leaderboard. Rewards are virtual; users fulfill them in the real world.
 
-## Firebase project
-`folio-book-tracker` — Firestore Standard, São Paulo (`southamerica-east1`), Spark plan. Google Analytics and optional Gemini assistance are disabled. No billing was enabled. Firebase quotas still apply.
+## Privacy and cloud
+- Habit/task state: `users/{uid}/tracker/state`, schemaVersion 2.
+- Book state: `users/{uid}/library/state`, schemaVersion 1, preserved separately.
+- Firestore access is restricted to the single approved, verified Google owner. Client Firebase config is public by design, not a database credential.
+- Offline edits are retained locally and retried on reconnect. Initial sign-in and loading require internet. This is not a fully offline PWA.
+- A focus timer continues by elapsed wall-clock time and is recorded when Folio is reopened. Local timer state is device-specific, not synced across devices.
+- No billing, analytics, or paid integrations were enabled. The existing Spark plan and quotas still apply.
+- Use Export backup regularly. Sign-out does not erase private recovery copies from this browser; clear site data on shared devices.
+- State is capped at 780 KB to stay below Firestore's document limit. Large long-running histories may eventually need a multi-document migration.
 
-The allowed website origin is `silvasantosgss.github.io`. Sign-in uses a Google popup, which must be allowed. The Firebase SDK is loaded from `www.gstatic.com` and internet access is required for initial sign-in and cloud loading.
+## Files and deployment
+- `index.html` — new habit/task UI and responsive styles
+- `tracker.js` — interface logic, progression, timer, and private cloud sync
+- `books.html` + `cloud.js` — original book tracker, unchanged data access
+- `FEATURE_IDEAS.md` — shipped concept and next-step ideas, clearly distinguished
 
-## Deploy
-GitHub Pages: main branch, repository root. No build step. Keep `index.html` and `cloud.js` together.
+GitHub Pages: main branch, root directory. Firebase: `folio-book-tracker`, Firestore Standard in São Paulo, Google sign-in. Keep all four app files together. No personal progress is committed to GitHub.
 
-## Features
-Reading shelves; progress; ratings; notes; customizable library goal; search and sort; JSON export/import; system light/dark mode; responsive mobile layout. Initial books are examples, not the owner's reading history. Sample covers come from Open Library.
+Starter habits (reading, movement, language practice) and rewards are editable suggestions, not imported records from Notion or claims of completed activity. All XP starts at zero. There is no automatic Notion or wearable sync.
