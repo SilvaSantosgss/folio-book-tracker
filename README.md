@@ -37,3 +37,14 @@ Achievements reflect recorded history; they are not permanent unlocks if the qua
 GitHub Pages: main branch, root directory. Firebase: `folio-book-tracker`, Firestore Standard in São Paulo, Google sign-in. Keep all four app files together. No personal progress is committed to GitHub.
 
 Starter habits (reading, movement, language practice) and rewards are editable suggestions, not imported records from Notion or claims of completed activity. All XP starts at zero. There is no automatic Notion or wearable sync.
+
+## Habit workspaces (v3)
+Tap a checkbox to complete; tap the habit name or row to open its workspace. Desktop opens a side panel; mobile opens a full-height sheet.
+
+- Eight editable templates and habit types: reading, home exercise, running/walking, languages, hydration, sleep, creative practice, and custom.
+- Session checklists, notes, perceived effort, custom fields, quick-add presets, daily amounts, weekly completed-day goals, cues, reasons, and minimum versions.
+- Specific log controls for each type: exercises/sets/reps/load notes, running pace, reading quotes, sleep times, and more. Reading notes do not automatically update the separate book library.
+- 28-day history, personal mastery, best streak/week, duplicate without history, pause/resume, and reorder (desktop drag/drop or accessible Move up/down actions).
+- Full target earns XP once per day. Partial/minimum/skip/rest entries do not award completion XP. Skip/rest are neutral for daily streaks. Weekly streaks count successful Monday–Sunday weeks; fully paused weeks are neutral.
+- Existing records have optional profiles and keep their original history. Changes to goal frequency/weekly target after completed history require duplication, avoiding retroactive streak changes.
+- Habit logs remain bounded by the existing 780 KB library limit; no image uploads or automatic wearable/book synchronization are included.
