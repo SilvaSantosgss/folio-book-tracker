@@ -21,3 +21,12 @@
 - **Smarter suggestions:** propose smaller versions of difficult habits, with explicit acceptance—never silently change a routine.
 
 Avoid public leaderboards, shame-based streak loss, punitive health mechanics, and pay-to-win rewards. The app should support a life, not become another job.
+
+## Implemented in the habit workspace upgrade
+- Dedicated habit details with separate completion controls.
+- Eight templates and type-specific session logging.
+- Reasons, cues, checklists, custom fields, minimum versions, and quick-add amounts.
+- Weekly completed-day goals and habit mastery.
+- 28-day history, notes, best streak/week, pause/resume, skip/rest, duplicate, and reorder.
+
+Future: automatic book-progress linking, attachments with dedicated storage, per-habit reminders, and richer exercise-by-exercise workout tables. Current exercise logs accept sets/reps/load notes; they do not replace a full workout app.
